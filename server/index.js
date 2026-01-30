@@ -15,7 +15,8 @@ import {
   getWordFrequency,
   getSentimentAnalysis,
   getStickerStats,
-  getStreakStats
+  getStreakStats,
+  getGroupChatStats
 } from './analytics.js';
 
 const app = express();
@@ -131,6 +132,17 @@ app.get('/api/streaks', (req, res) => {
   }
 });
 
+// Group chat analytics
+app.get('/api/group-chats', (req, res) => {
+  try {
+    const groupChats = getGroupChatStats();
+    res.json(groupChats);
+  } catch (error) {
+    console.error('Error getting group chats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Sticker analytics
 app.get('/api/stickers', (req, res) => {
   try {
@@ -212,6 +224,7 @@ app.listen(PORT, () => {
   console.log(`   GET /api/words - Word frequency`);
   console.log(`   GET /api/sentiment - Sentiment analysis`);
   console.log(`   GET /api/streaks - Streak statistics`);
+  console.log(`   GET /api/group-chats - Group chat analytics`);
   console.log(`   GET /api/stickers - Sticker statistics`);
   console.log(`   GET /api/sticker-image - Serve sticker images`);
 });
