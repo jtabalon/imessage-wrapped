@@ -198,6 +198,54 @@ export function getHandles() {
   return db.prepare('SELECT ROWID, id, service FROM handle').all();
 }
 
+// Get sticker messages with schema-adaptive detection
+export function getStickerMessages() {
+  const db = getDatabase();
+
+  // Detect available columns via PRAGMA
+  const attachmentCols = db.prepare('PRAGMA table_info(attachment)').all().map(c => c.name);
+  const messageCols = db.prepare('PRAGMA table_info(message)').all().map(c => c.name);
+
+  const hasIsSticker = attachmentCols.includes('is_sticker');
+  const hasBalloonBundleId = messageCols.includes('balloon_bundle_id');
+  const hasAssociatedMessageType = messageCols.includes('associated_message_type');
+
+  // Build WHERE conditions for sticker detection (layered, OR'd)
+  const conditions = [];
+  if (hasIsSticker) conditions.push('a.is_sticker = 1');
+  if (hasBalloonBundleId) conditions.push("m.balloon_bundle_id LIKE 'com.apple.messages.MSMessageExtensionBalloonPlugin:%'");
+  if (hasAssociatedMessageType) conditions.push('m.associated_message_type = 1000');
+  conditions.push("a.uti = 'com.apple.sticker'");
+
+  const whereClause = conditions.join(' OR ');
+
+  const balloonSelect = hasBalloonBundleId ? 'm.balloon_bundle_id' : "NULL as balloon_bundle_id";
+
+  const query = `
+    SELECT
+      a.ROWID as attachment_id,
+      a.filename,
+      a.transfer_name,
+      a.uti,
+      a.mime_type,
+      m.date,
+      m.is_from_me,
+      m.handle_id,
+      h.id as contact_id,
+      ${balloonSelect}
+    FROM attachment a
+    JOIN message_attachment_join maj ON a.ROWID = maj.attachment_id
+    JOIN message m ON maj.message_id = m.ROWID
+    LEFT JOIN handle h ON m.handle_id = h.ROWID
+    LEFT JOIN chat_message_join cmj ON m.ROWID = cmj.message_id
+    LEFT JOIN chat c ON cmj.chat_id = c.ROWID
+    WHERE ${whereClause}
+    ORDER BY m.date ASC
+  `;
+
+  return db.prepare(query).all();
+}
+
 // Test database connection
 export function testConnection() {
   try {

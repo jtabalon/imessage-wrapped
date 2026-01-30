@@ -1,4 +1,4 @@
-import { getMessages2025, appleTimestampToDate, getHandles, getDatabase, getContactName } from './db.js';
+import { getMessages2025, appleTimestampToDate, getHandles, getDatabase, getContactName, getStickerMessages } from './db.js';
 
 // Cache for processed data
 let messagesCache = null;
@@ -518,6 +518,113 @@ export function getSentimentAnalysis() {
     },
     mostPositiveContacts: contactScores.slice(0, 5),
     mostNegativeContacts: contactScores.slice(-5).reverse(),
+    monthlyTrend
+  };
+}
+
+// Sticker statistics
+export function getStickerStats() {
+  const rawStickers = getStickerMessages();
+
+  if (rawStickers.length === 0) {
+    return {
+      totalStickers: 0,
+      sent: 0,
+      received: 0,
+      uniqueStickers: 0,
+      topStickersSent: [],
+      topStickersReceived: [],
+      topStickersOverall: [],
+      topStickerSentTo: [],
+      topStickerReceivedFrom: [],
+      monthlyTrend: []
+    };
+  }
+
+  // Process rows: convert timestamps, derive sticker key
+  const stickers = rawStickers.map(row => ({
+    ...row,
+    date: appleTimestampToDate(row.date),
+    stickerKey: row.transfer_name || row.filename || `attachment_${row.attachment_id}`
+  }));
+
+  const sent = stickers.filter(s => s.is_from_me);
+  const received = stickers.filter(s => !s.is_from_me);
+  const uniqueKeys = new Set(stickers.map(s => s.stickerKey));
+
+  // Helper: count stickers by key, track top contact per sticker, return top N
+  function topByKey(list, limit = 10) {
+    const counts = {};
+    list.forEach(s => {
+      if (!counts[s.stickerKey]) {
+        counts[s.stickerKey] = { stickerKey: s.stickerKey, filename: s.filename, transfer_name: s.transfer_name, count: 0, contactCounts: {} };
+      }
+      counts[s.stickerKey].count++;
+      const contactId = s.contact_id || 'Unknown';
+      counts[s.stickerKey].contactCounts[contactId] = (counts[s.stickerKey].contactCounts[contactId] || 0) + 1;
+    });
+    return Object.values(counts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit)
+      .map(({ contactCounts, ...rest }) => {
+        const topContact = Object.entries(contactCounts).sort((a, b) => b[1] - a[1])[0];
+        return { ...rest, topContact: topContact ? (getContactName(topContact[0]) || topContact[0]) : null };
+      });
+  }
+
+  // Per-contact favorite sticker (split by sent to / received from)
+  function perContactTopSticker(list) {
+    const contactStickers = {};
+    list.forEach(s => {
+      const contactId = s.contact_id || 'Unknown';
+      if (!contactStickers[contactId]) contactStickers[contactId] = {};
+      if (!contactStickers[contactId][s.stickerKey]) {
+        contactStickers[contactId][s.stickerKey] = { stickerKey: s.stickerKey, filename: s.filename, transfer_name: s.transfer_name, count: 0 };
+      }
+      contactStickers[contactId][s.stickerKey].count++;
+    });
+    return Object.entries(contactStickers)
+      .map(([contactId, stickerMap]) => {
+        const top = Object.values(stickerMap).sort((a, b) => b.count - a.count)[0];
+        return {
+          contactId,
+          name: getContactName(contactId) || contactId,
+          favoriteSticker: top
+        };
+      })
+      .filter(c => c.favoriteSticker)
+      .sort((a, b) => b.favoriteSticker.count - a.favoriteSticker.count)
+      .slice(0, 5);
+  }
+  const topStickerSentTo = perContactTopSticker(sent);
+  const topStickerReceivedFrom = perContactTopSticker(received);
+
+  // Monthly sticker usage trend (sent vs received)
+  const monthlyCounts = {};
+  stickers.forEach(s => {
+    if (!s.date) return;
+    const monthKey = `${s.date.getFullYear()}-${String(s.date.getMonth() + 1).padStart(2, '0')}`;
+    if (!monthlyCounts[monthKey]) monthlyCounts[monthKey] = { sent: 0, received: 0 };
+    if (s.is_from_me) {
+      monthlyCounts[monthKey].sent++;
+    } else {
+      monthlyCounts[monthKey].received++;
+    }
+  });
+  const monthlyTrend = Object.entries(monthlyCounts)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, counts]) => ({ month, sent: counts.sent, received: counts.received }));
+
+  return {
+    totalStickers: stickers.length,
+    sent: sent.length,
+    received: received.length,
+    uniqueStickers: uniqueKeys.size,
+    topStickersSent: topByKey(sent),
+    topStickersReceived: topByKey(received),
+    topStickersOverall: topByKey(stickers),
+    topStickerSentTo,
+    topStickerReceivedFrom,
     monthlyTrend
   };
 }
