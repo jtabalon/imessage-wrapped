@@ -979,6 +979,7 @@ export function getGroupChatStats() {
   const personalities = {};
   top10.forEach(stat => {
     const entries = Object.entries(stat.memberCounts)
+      .filter(([hid]) => hid !== 'Unknown')
       .map(([hid, count]) => ({ handleId: hid, name: resolveName(hid), count }))
       .sort((a, b) => b.count - a.count);
 
@@ -1022,6 +1023,7 @@ export function getGroupChatStats() {
   const deepDive = {};
   top5.forEach(stat => {
     const memberDistribution = Object.entries(stat.memberCounts)
+      .filter(([hid]) => hid !== 'Unknown')
       .map(([hid, count]) => ({ name: resolveName(hid), count }))
       .sort((a, b) => b.count - a.count);
 
