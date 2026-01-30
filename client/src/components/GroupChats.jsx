@@ -150,8 +150,8 @@ function GroupChats() {
                   selectedChat === group.chatIdentifier ? null : group.chatIdentifier
                 )}
               >
-                <div className={`text-3xl mb-1 ${actualIndex === 0 ? 'animate-pulse-slow' : ''}`}>
-                  💬
+                <div className={`text-4xl mb-2 ${actualIndex === 0 ? 'animate-pulse-slow' : ''}`}>
+                  {actualIndex === 0 ? '🥇' : actualIndex === 1 ? '🥈' : '🥉'}
                 </div>
                 <div
                   className={`w-24 ${heights[actualIndex]} rounded-t-lg flex flex-col items-center justify-center px-2 ${
