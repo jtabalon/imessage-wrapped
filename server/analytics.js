@@ -112,8 +112,9 @@ export function getTopContacts(limit = 10) {
     contactStats[contactId].lastMessage = msg.date;
   });
 
-  // Sort by total and get top contacts
+  // Sort by total and get top contacts (exclude Unknown)
   const topContacts = Object.values(contactStats)
+    .filter(c => c.id !== 'Unknown')
     .sort((a, b) => b.total - a.total)
     .slice(0, limit)
     .map(contact => ({
