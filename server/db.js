@@ -114,6 +114,29 @@ function normalizePhone(phone) {
   return hasPlus ? '+' + digits : digits;
 }
 
+// Extract the last 10 digits from a phone string (local US number)
+function toLocal10(phone) {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits;
+}
+
+// Build a reverse lookup from local 10-digit number to contact name
+let local10Map = null;
+function getLocal10Map() {
+  if (local10Map) return local10Map;
+  const contacts = loadContactsMap();
+  local10Map = new Map();
+  for (const [key, name] of contacts) {
+    if (key.includes('@')) continue;
+    const local = toLocal10(key);
+    if (local.length === 10) {
+      local10Map.set(local, name);
+    }
+  }
+  return local10Map;
+}
+
 // Get contact name from phone/email
 export function getContactName(identifier) {
   if (!identifier) return null;
@@ -130,19 +153,12 @@ export function getContactName(identifier) {
     return contacts.get(normalized);
   }
 
-  // Try without country code (for US numbers)
-  if (normalized.startsWith('+1') && normalized.length === 12) {
-    const withoutCountry = normalized.slice(2);
-    if (contacts.has(withoutCountry)) {
-      return contacts.get(withoutCountry);
-    }
-  }
-
-  // Try adding +1 for 10-digit numbers
-  if (normalized.length === 10) {
-    const withCountry = '+1' + normalized;
-    if (contacts.has(withCountry)) {
-      return contacts.get(withCountry);
+  // Try matching on last 10 digits (handles all +1 / 1 / bare permutations)
+  const local = toLocal10(identifier);
+  if (local.length === 10) {
+    const map = getLocal10Map();
+    if (map.has(local)) {
+      return map.get(local);
     }
   }
 
