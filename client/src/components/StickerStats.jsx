@@ -41,10 +41,10 @@ function StickerStats() {
     if (!url || errored) {
       return (
         <div
-          className="bg-white/10 rounded-lg flex items-center justify-center text-white/40 text-xs"
+          className="bg-white/10 rounded-lg flex flex-col items-center justify-center"
           style={{ width: size, height: size }}
         >
-          {transfer_name || '?'}
+          <span style={{ fontSize: size * 0.5 }}>🩷</span>
         </div>
       )
     }
@@ -228,25 +228,46 @@ function StickerStats() {
         </div>
       )}
 
-      {/* Per-Contact Favorite Sticker */}
-      {data.perContactFavorite?.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-4">Favorite Sticker Per Contact</h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {data.perContactFavorite.map((item, index) => (
-              <div key={index} className="flex flex-col items-center gap-2 bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
-                <StickerImage
-                  filename={item.favoriteSticker?.filename}
-                  transfer_name={item.favoriteSticker?.transfer_name}
-                  size={48}
-                />
-                <p className="text-white text-sm font-medium truncate w-full text-center">{item.name}</p>
-                <span className="text-cyan-400 font-semibold text-xs">{formatNumber(item.favoriteSticker?.count)}</span>
-              </div>
-            ))}
+      {/* Per-Contact Favorite Sticker — Sent To / Received From */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {data.topStickerSentTo?.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Most Sent Sticker Per Contact</h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {data.topStickerSentTo.map((item, index) => (
+                <div key={index} className="flex flex-col items-center gap-2 bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
+                  <StickerImage
+                    filename={item.favoriteSticker?.filename}
+                    transfer_name={item.favoriteSticker?.transfer_name}
+                    size={48}
+                  />
+                  <p className="text-white text-sm font-medium truncate w-full text-center">{item.name}</p>
+                  <span className="text-purple-400 font-semibold text-xs">{formatNumber(item.favoriteSticker?.count)}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {data.topStickerReceivedFrom?.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Most Received Sticker Per Contact</h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {data.topStickerReceivedFrom.map((item, index) => (
+                <div key={index} className="flex flex-col items-center gap-2 bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
+                  <StickerImage
+                    filename={item.favoriteSticker?.filename}
+                    transfer_name={item.favoriteSticker?.transfer_name}
+                    size={48}
+                  />
+                  <p className="text-white text-sm font-medium truncate w-full text-center">{item.name}</p>
+                  <span className="text-pink-400 font-semibold text-xs">{formatNumber(item.favoriteSticker?.count)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -535,7 +535,8 @@ export function getStickerStats() {
       topStickersSent: [],
       topStickersReceived: [],
       topStickersOverall: [],
-      perContactFavorite: [],
+      topStickerSentTo: [],
+      topStickerReceivedFrom: [],
       monthlyTrend: []
     };
   }
@@ -571,28 +572,32 @@ export function getStickerStats() {
       });
   }
 
-  // Per-contact favorite sticker
-  const contactStickers = {};
-  stickers.forEach(s => {
-    const contactId = s.contact_id || 'Unknown';
-    if (!contactStickers[contactId]) contactStickers[contactId] = {};
-    if (!contactStickers[contactId][s.stickerKey]) {
-      contactStickers[contactId][s.stickerKey] = { stickerKey: s.stickerKey, filename: s.filename, transfer_name: s.transfer_name, count: 0 };
-    }
-    contactStickers[contactId][s.stickerKey].count++;
-  });
-  const perContactFavorite = Object.entries(contactStickers)
-    .map(([contactId, stickerMap]) => {
-      const top = Object.values(stickerMap).sort((a, b) => b.count - a.count)[0];
-      return {
-        contactId,
-        name: getContactName(contactId) || contactId,
-        favoriteSticker: top
-      };
-    })
-    .filter(c => c.favoriteSticker)
-    .sort((a, b) => b.favoriteSticker.count - a.favoriteSticker.count)
-    .slice(0, 10);
+  // Per-contact favorite sticker (split by sent to / received from)
+  function perContactTopSticker(list) {
+    const contactStickers = {};
+    list.forEach(s => {
+      const contactId = s.contact_id || 'Unknown';
+      if (!contactStickers[contactId]) contactStickers[contactId] = {};
+      if (!contactStickers[contactId][s.stickerKey]) {
+        contactStickers[contactId][s.stickerKey] = { stickerKey: s.stickerKey, filename: s.filename, transfer_name: s.transfer_name, count: 0 };
+      }
+      contactStickers[contactId][s.stickerKey].count++;
+    });
+    return Object.entries(contactStickers)
+      .map(([contactId, stickerMap]) => {
+        const top = Object.values(stickerMap).sort((a, b) => b.count - a.count)[0];
+        return {
+          contactId,
+          name: getContactName(contactId) || contactId,
+          favoriteSticker: top
+        };
+      })
+      .filter(c => c.favoriteSticker)
+      .sort((a, b) => b.favoriteSticker.count - a.favoriteSticker.count)
+      .slice(0, 5);
+  }
+  const topStickerSentTo = perContactTopSticker(sent);
+  const topStickerReceivedFrom = perContactTopSticker(received);
 
   // Monthly sticker usage trend (sent vs received)
   const monthlyCounts = {};
@@ -618,7 +623,8 @@ export function getStickerStats() {
     topStickersSent: topByKey(sent),
     topStickersReceived: topByKey(received),
     topStickersOverall: topByKey(stickers),
-    perContactFavorite,
+    topStickerSentTo,
+    topStickerReceivedFrom,
     monthlyTrend
   };
 }
