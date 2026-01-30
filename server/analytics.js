@@ -1,9 +1,36 @@
-import { getMessages2025, appleTimestampToDate, getHandles, getDatabase, getContactName, getStickerMessages } from './db.js';
+import { getMessages2025, appleTimestampToDate, getHandles, getDatabase, getContactName, getStickerMessages, getGroupChatMembers } from './db.js';
 
 // Helper: format a Date as YYYY-MM-DD in local time
 function toDateString(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+// Common stop words to exclude (shared by word frequency + group chat analytics)
+const stopWords = new Set([
+  'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
+  'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
+  'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+  'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
+  'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
+  'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take',
+  'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other',
+  'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also',
+  'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way',
+  'even', 'new', 'want', 'because', 'any', 'these', 'give', 'day', 'most', 'us',
+  'is', 'are', 'was', 'were', 'been', 'being', 'has', 'had', 'did', 'does',
+  'am', 'im', 'dont', 'cant', 'wont', 'didnt', 'isnt', 'arent', 'wasnt', 'werent',
+  'yeah', 'yes', 'no', 'ok', 'okay', 'lol', 'haha', 'hahaha', 'lmao', 'omg',
+  'got', 'gonna', 'gotta', 'wanna', 'kinda', 'really', 'very', 'much', 'too',
+  'thing', 'things', 'stuff', 'lot', 'lots', 'still', 'here', 'there', 'where',
+  'why', 'been', 'being', 'more', 'should', 'would', 'could', 'might', 'must',
+  'let', 'lets', 'maybe', 'actually', 'probably', 'already', 'right', 'sure',
+  'though', 'thought', 'something', 'anything', 'everything', 'nothing',
+  'someone', 'anyone', 'everyone', 'noone', 'nobody', 'everybody', 'somebody',
+  'www', 'com', 'http', 'https', 'org', 'net', 'edu', 'gov', 'html', 'htm'
+]);
+
+// Emoji regex (shared by emoji stats + group chat analytics)
+const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu;
 
 // Cache for processed data
 let messagesCache = null;
@@ -281,9 +308,6 @@ export function getResponseTimes() {
 export function getEmojiStats() {
   const messages = getProcessedMessages();
 
-  // Emoji regex (covers most common emojis)
-  const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu;
-
   const emojiCount = {};
   const emojiByContact = {};
   const emojiByMonth = {};
@@ -368,30 +392,6 @@ export function getEmojiStats() {
 // Word frequency for word cloud
 export function getWordFrequency() {
   const messages = getProcessedMessages();
-
-  // Common stop words to exclude
-  const stopWords = new Set([
-    'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
-    'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
-    'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
-    'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
-    'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
-    'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take',
-    'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other',
-    'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also',
-    'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way',
-    'even', 'new', 'want', 'because', 'any', 'these', 'give', 'day', 'most', 'us',
-    'is', 'are', 'was', 'were', 'been', 'being', 'has', 'had', 'did', 'does',
-    'am', 'im', 'dont', 'cant', 'wont', 'didnt', 'isnt', 'arent', 'wasnt', 'werent',
-    'yeah', 'yes', 'no', 'ok', 'okay', 'lol', 'haha', 'hahaha', 'lmao', 'omg',
-    'got', 'gonna', 'gotta', 'wanna', 'kinda', 'really', 'very', 'much', 'too',
-    'thing', 'things', 'stuff', 'lot', 'lots', 'still', 'here', 'there', 'where',
-    'why', 'been', 'being', 'more', 'should', 'would', 'could', 'might', 'must',
-    'let', 'lets', 'maybe', 'actually', 'probably', 'already', 'right', 'sure',
-    'though', 'thought', 'something', 'anything', 'everything', 'nothing',
-    'someone', 'anyone', 'everyone', 'noone', 'nobody', 'everybody', 'somebody',
-    'www', 'com', 'http', 'https', 'org', 'net', 'edu', 'gov', 'html', 'htm'
-  ]);
 
   const wordCount = {};
 
@@ -855,4 +855,181 @@ export function getStreakStats() {
       activeStreakCount: activeStreaks.length
     }
   };
+}
+
+// Group chat analytics (leaderboard, personality profiles, deep dive)
+export function getGroupChatStats() {
+  const messages = getProcessedMessages();
+  const memberRows = getGroupChatMembers();
+
+  // Step 1: Build members map per chat from chat_handle_join
+  const chatMembersMap = {};
+  memberRows.forEach(row => {
+    if (!chatMembersMap[row.chat_identifier]) {
+      chatMembersMap[row.chat_identifier] = {
+        chatName: row.chat_name || row.chat_identifier,
+        members: new Set()
+      };
+    }
+    chatMembersMap[row.chat_identifier].members.add(row.handle_id);
+  });
+
+  // Step 2: Filter to group chat messages and aggregate per chat
+  const chatStats = {};
+
+  messages.forEach(msg => {
+    if (!msg.chat_identifier || !msg.chat_identifier.startsWith('chat')) return;
+
+    const chatId = msg.chat_identifier;
+    if (!chatStats[chatId]) {
+      chatStats[chatId] = {
+        chatIdentifier: chatId,
+        chatName: chatMembersMap[chatId]?.chatName || msg.chat_name || chatId,
+        totalMessages: 0,
+        myMessages: 0,
+        memberCounts: {},
+        dailyFirstLast: {},
+        monthlyCounts: {},
+        emojis: {},
+        words: {}
+      };
+    }
+    const stat = chatStats[chatId];
+    stat.totalMessages++;
+
+    if (msg.is_from_me) {
+      stat.myMessages++;
+      stat.memberCounts['__me__'] = (stat.memberCounts['__me__'] || 0) + 1;
+    } else {
+      const hid = msg.contact_id || 'Unknown';
+      stat.memberCounts[hid] = (stat.memberCounts[hid] || 0) + 1;
+    }
+
+    // Daily first/last tracking for conversation starter / last word
+    if (msg.date) {
+      const dateStr = toDateString(msg.date);
+      const senderId = msg.is_from_me ? '__me__' : (msg.contact_id || 'Unknown');
+
+      if (!stat.dailyFirstLast[dateStr]) {
+        stat.dailyFirstLast[dateStr] = {
+          first: { handleId: senderId, date: msg.date },
+          last: { handleId: senderId, date: msg.date }
+        };
+      } else {
+        const fl = stat.dailyFirstLast[dateStr];
+        if (msg.date < fl.first.date) {
+          fl.first = { handleId: senderId, date: msg.date };
+        }
+        if (msg.date >= fl.last.date) {
+          fl.last = { handleId: senderId, date: msg.date };
+        }
+      }
+
+      // Monthly counts
+      const monthKey = `${msg.date.getFullYear()}-${String(msg.date.getMonth() + 1).padStart(2, '0')}`;
+      stat.monthlyCounts[monthKey] = (stat.monthlyCounts[monthKey] || 0) + 1;
+    }
+
+    // Emoji extraction
+    if (msg.text) {
+      const emojis = msg.text.match(emojiRegex) || [];
+      emojis.forEach(e => { stat.emojis[e] = (stat.emojis[e] || 0) + 1; });
+
+      // Word extraction
+      const wordTokens = msg.text
+        .toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !stopWords.has(w) && !/^\d+$/.test(w));
+      wordTokens.forEach(w => { stat.words[w] = (stat.words[w] || 0) + 1; });
+    }
+  });
+
+  // Step 3: Sort by total messages
+  const sorted = Object.values(chatStats)
+    .sort((a, b) => b.totalMessages - a.totalMessages);
+  const top10 = sorted.slice(0, 10);
+  const top5 = sorted.slice(0, 5);
+
+  // Step 4: Build leaderboard
+  const leaderboard = top10.map(stat => ({
+    chatIdentifier: stat.chatIdentifier,
+    chatName: stat.chatName,
+    totalMessages: stat.totalMessages,
+    memberCount: chatMembersMap[stat.chatIdentifier]?.members.size
+      || Object.keys(stat.memberCounts).length,
+    myMessages: stat.myMessages,
+    myPercentage: Math.round((stat.myMessages / stat.totalMessages) * 1000) / 10
+  }));
+
+  // Step 5: Build personality profiles for top 10
+  const resolveName = (hid) => hid === '__me__' ? 'You' : (getContactName(hid) || hid);
+
+  const personalities = {};
+  top10.forEach(stat => {
+    const entries = Object.entries(stat.memberCounts)
+      .map(([hid, count]) => ({ handleId: hid, name: resolveName(hid), count }))
+      .sort((a, b) => b.count - a.count);
+
+    const mostTalkative = entries[0] || null;
+    const activeMembers = entries.filter(e => e.count > 0);
+    const lurker = activeMembers.length > 1
+      ? activeMembers[activeMembers.length - 1]
+      : null;
+
+    // Conversation starter / last word counts
+    const starterCounts = {};
+    const lastWordCounts = {};
+    Object.values(stat.dailyFirstLast).forEach(({ first, last }) => {
+      starterCounts[first.handleId] = (starterCounts[first.handleId] || 0) + 1;
+      lastWordCounts[last.handleId] = (lastWordCounts[last.handleId] || 0) + 1;
+    });
+
+    const resolveTop = (counts) => {
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+      if (!top) return null;
+      return { handleId: top[0], name: resolveName(top[0]), count: top[1] };
+    };
+
+    const meEntry = entries.find(e => e.handleId === '__me__');
+    const myRank = meEntry ? entries.indexOf(meEntry) + 1 : entries.length + 1;
+
+    personalities[stat.chatIdentifier] = {
+      mostTalkative: mostTalkative ? { name: mostTalkative.name, count: mostTalkative.count } : null,
+      lurker: lurker ? { name: lurker.name, count: lurker.count } : null,
+      conversationStarter: resolveTop(starterCounts),
+      lastWord: resolveTop(lastWordCounts),
+      you: {
+        rank: myRank,
+        count: stat.myMessages,
+        percentage: Math.round((stat.myMessages / stat.totalMessages) * 1000) / 10
+      }
+    };
+  });
+
+  // Step 6: Build deep dive for top 5
+  const deepDive = {};
+  top5.forEach(stat => {
+    const memberDistribution = Object.entries(stat.memberCounts)
+      .map(([hid, count]) => ({ name: resolveName(hid), count }))
+      .sort((a, b) => b.count - a.count);
+
+    const monthlyActivity = Object.entries(stat.monthlyCounts)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, count]) => ({ month, count }));
+
+    const topEmojis = Object.entries(stat.emojis)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([emoji, count]) => ({ emoji, count }));
+
+    const topWords = Object.entries(stat.words)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word, count]) => ({ word, count }));
+
+    deepDive[stat.chatIdentifier] = { memberDistribution, monthlyActivity, topEmojis, topWords };
+  });
+
+  return { leaderboard, personalities, deepDive };
 }

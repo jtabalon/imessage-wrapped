@@ -262,6 +262,31 @@ export function getStickerMessages() {
   return db.prepare(query).all();
 }
 
+// Get group chat members via chat_handle_join table
+export function getGroupChatMembers() {
+  const db = getDatabase();
+
+  // Safety: check if chat_handle_join table exists
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='chat_handle_join'").all();
+  if (tables.length === 0) {
+    return [];
+  }
+
+  const query = `
+    SELECT
+      c.ROWID as chat_rowid,
+      c.chat_identifier,
+      c.display_name as chat_name,
+      h.id as handle_id
+    FROM chat c
+    JOIN chat_handle_join chj ON c.ROWID = chj.chat_id
+    JOIN handle h ON chj.handle_id = h.ROWID
+    WHERE c.chat_identifier LIKE 'chat%'
+  `;
+
+  return db.prepare(query).all();
+}
+
 // Test database connection
 export function testConnection() {
   try {
