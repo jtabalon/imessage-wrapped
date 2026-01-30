@@ -34,10 +34,33 @@ function ActivityStoryCard({ activity }) {
     <StoryCard>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <h2 style={{ fontSize: 56, fontWeight: 700, margin: '0 0 12px 0' }}>When You Message</h2>
-        <p style={{ fontSize: 26, color: 'rgba(255,255,255,0.5)', margin: '0 0 40px 0', letterSpacing: '0.02em', wordSpacing: '0.3em' }}>
-          Your messaging patterns
+        <h2 style={{
+          fontSize: 56,
+          fontWeight: 800,
+          margin: '0 0 12px 0',
+          letterSpacing: '0.06em',
+          wordSpacing: '0.2em',
+        }}>
+          When You Message
+        </h2>
+        <p style={{
+          fontSize: 26,
+          color: 'rgba(255,255,255,0.35)',
+          margin: '0 0 24px 0',
+          letterSpacing: '0.04em',
+          whiteSpace: 'pre',
+        }}>
+          {'Your messaging patterns'}
         </p>
+
+        {/* Accent divider */}
+        <div style={{
+          width: 120,
+          height: 4,
+          borderRadius: 2,
+          background: 'linear-gradient(90deg, #a78bfa, #f472b6)',
+          marginBottom: 40,
+        }} />
 
         {/* Heatmap */}
         <div style={{ marginBottom: 60 }}>
@@ -96,39 +119,36 @@ function ActivityStoryCard({ activity }) {
         </div>
 
         {/* Peak callouts */}
-        <div style={{ display: 'flex', gap: 24 }}>
-          {peakHour && (
-            <div style={{
+        <div style={{ display: 'flex', gap: 0, width: '100%' }}>
+          {[
+            peakHour ? { label: 'Peak Hour', value: formatHour(peakHour.hour), color: '#c084fc' } : null,
+            peakDay ? { label: 'Peak Day', value: peakDay.label, color: '#f093fb' } : null,
+          ].filter(Boolean).map((item, index) => (
+            <div key={item.label} style={{
               flex: 1,
-              padding: '32px 24px',
-              background: 'rgba(255,255,255,0.06)',
-              borderRadius: 20,
-              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '28px 16px',
+              borderLeft: index > 0 ? '1px solid rgba(255,255,255,0.1)' : 'none',
             }}>
-              <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.5)', marginBottom: 12, wordSpacing: '0.3em' }}>
-                Peak Hour
-              </div>
-              <div style={{ fontSize: 44, fontWeight: 700, color: '#c084fc' }}>
-                {formatHour(peakHour.hour)}
-              </div>
+              <div style={{ fontSize: 44, fontWeight: 700, color: item.color }}>{item.value}</div>
+              <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.5)', marginTop: 10, wordSpacing: '0.3em' }}>{item.label}</div>
             </div>
-          )}
-          {peakDay && (
-            <div style={{
-              flex: 1,
-              padding: '32px 24px',
-              background: 'rgba(255,255,255,0.06)',
-              borderRadius: 20,
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.5)', marginBottom: 12, wordSpacing: '0.3em' }}>
-                Peak Day
-              </div>
-              <div style={{ fontSize: 44, fontWeight: 700, color: '#f093fb' }}>
-                {peakDay.label}
-              </div>
-            </div>
-          )}
+          ))}
+        </div>
+
+        {/* Footer context */}
+        <div style={{
+          marginTop: 32,
+          textAlign: 'center',
+          fontSize: 20,
+          color: 'rgba(255,255,255,0.25)',
+          letterSpacing: '0.03em',
+          whiteSpace: 'pre',
+        }}>
+          {'Based on messages sent & received in 2025'}
         </div>
       </div>
     </StoryCard>

@@ -1,9 +1,9 @@
 import StoryCard from './StoryCard'
 
 const podiumColors = [
-  ['#667eea', '#764ba2'],
-  ['#f093fb', '#f5576c'],
-  ['#4facfe', '#00f2fe'],
+  ['#6366f1', '#8b5cf6'],  // #1 — vibrant indigo-purple
+  ['#c9a0c8', '#c5848e'],  // #2 — muted pink
+  ['#7aaec0', '#72bec2'],  // #3 — muted teal
 ]
 
 function GroupChatsStoryCard({ groupChats }) {
@@ -17,6 +17,64 @@ function GroupChatsStoryCard({ groupChats }) {
     return num?.toLocaleString() || '0'
   }
 
+  const normalizeName = (name) => {
+    if (!name) return 'Unknown'
+    return name.replace(/\s+/g, ' ').trim()
+  }
+
+  const displayName = (name) => normalizeName(name).replace(/ /g, '\u2002')
+
+  const wrapToLines = (text, maxChars) => {
+    if (!text) return ['Unknown']
+    const words = text.split(' ')
+    const lines = []
+    let current = ''
+
+    words.forEach((word) => {
+      let remaining = word
+      while (remaining.length > maxChars) {
+        if (current) {
+          lines.push(current)
+          current = ''
+        }
+        lines.push(remaining.slice(0, maxChars))
+        remaining = remaining.slice(maxChars)
+      }
+
+      if (!current) {
+        current = remaining
+      } else if ((current.length + 1 + remaining.length) <= maxChars) {
+        current = `${current} ${remaining}`
+      } else {
+        lines.push(current)
+        current = remaining
+      }
+    })
+
+    if (current) lines.push(current)
+    return lines
+  }
+
+  const fitNameToLines = (rawName, { maxWidth, baseSize, minSize, maxLines }) => {
+    const name = normalizeName(rawName)
+    let fontSize = baseSize
+    let lines = [name]
+
+    while (fontSize >= minSize) {
+      const charsPerLine = Math.max(8, Math.floor(maxWidth / (fontSize * 0.56)))
+      lines = wrapToLines(name, charsPerLine)
+      if (lines.length <= maxLines) break
+      fontSize -= 1
+    }
+
+    const lineHeight = fontSize < 18 ? 1.15 : 1.25
+    return {
+      text: displayName(lines.join('\n')),
+      fontSize,
+      lineHeight,
+    }
+  }
+
   const top3 = leaderboard.slice(0, 3)
   const totalMessages = leaderboard.reduce((sum, g) => sum + g.totalMessages, 0)
 
@@ -24,9 +82,23 @@ function GroupChatsStoryCard({ groupChats }) {
     <StoryCard>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <h2 style={{ fontSize: 56, fontWeight: 700, margin: '0 0 12px 0', wordSpacing: '0.2em' }}>Group Chat Life</h2>
-        <p style={{ fontSize: 26, color: 'rgba(255,255,255,0.5)', margin: '0 0 60px 0', letterSpacing: '0.02em', wordSpacing: '0.3em' }}>
-          Your most active group chats
+        <h2 style={{
+          fontSize: 56,
+          fontWeight: 800,
+          margin: '0 0 12px 0',
+          letterSpacing: '0.06em',
+          wordSpacing: '0.2em',
+        }}>
+          Group Chat Life
+        </h2>
+        <p style={{
+          fontSize: 26,
+          color: 'rgba(255,255,255,0.35)',
+          margin: '0 0 60px 0',
+          letterSpacing: '0.04em',
+          whiteSpace: 'pre',
+        }}>
+          {'Your most active group chats'}
         </p>
 
         {/* Top 3 cards */}
@@ -34,6 +106,13 @@ function GroupChatsStoryCard({ groupChats }) {
           {top3.map((group, index) => {
             const p = personalities?.[group.chatIdentifier]
             const medals = ['🥇', '🥈', '🥉']
+            const rawName = normalizeName(group.chatName || 'Unknown')
+            const nameLayout = fitNameToLines(rawName, {
+              maxWidth: 420,
+              baseSize: 32,
+              minSize: 18,
+              maxLines: 2,
+            })
 
             return (
               <div key={index} style={{
@@ -44,26 +123,27 @@ function GroupChatsStoryCard({ groupChats }) {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: p ? 20 : 0 }}>
                   <span style={{ fontSize: 44 }}>{medals[index]}</span>
-                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontSize: 32,
+                      fontSize: nameLayout.fontSize,
                       fontWeight: 700,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
+                      lineHeight: nameLayout.lineHeight,
                     }}>
-                      {group.chatName}
+                      {nameLayout.text}
                     </div>
                     <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.5)', marginTop: 4, wordSpacing: '0.2em' }}>
                       {group.memberCount + ' members'}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontSize: 36, fontWeight: 700, color: podiumColors[index][0] }}>
                       {formatNumber(group.totalMessages)}
                     </div>
-                    <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)' }}>
-                      {'You: ' + group.myPercentage + '%'}
+                    <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)', whiteSpace: 'pre' }}>
+                      {'You:\u2002' + group.myPercentage + '%'}
                     </div>
                   </div>
                 </div>
@@ -78,8 +158,9 @@ function GroupChatsStoryCard({ groupChats }) {
                         borderRadius: 12,
                         padding: '6px 16px',
                         color: 'rgba(255,255,255,0.7)',
+                        whiteSpace: 'pre',
                       }}>
-                        {'📢 ' + p.mostTalkative.name}
+                        {'📢\u2002' + displayName(p.mostTalkative.name)}
                       </span>
                     )}
                     {p.lurker && (
@@ -89,8 +170,9 @@ function GroupChatsStoryCard({ groupChats }) {
                         borderRadius: 12,
                         padding: '6px 16px',
                         color: 'rgba(255,255,255,0.7)',
+                        whiteSpace: 'pre',
                       }}>
-                        {'👀 ' + p.lurker.name}
+                        {'👀\u2002' + displayName(p.lurker.name)}
                       </span>
                     )}
                   </div>
@@ -104,16 +186,33 @@ function GroupChatsStoryCard({ groupChats }) {
         <div style={{
           textAlign: 'center',
           padding: '32px 24px',
-          background: 'rgba(255,255,255,0.06)',
-          borderRadius: 20,
           marginTop: 50,
         }}>
           <div style={{ fontSize: 44, fontWeight: 700, color: '#c084fc' }}>
             {formatNumber(totalMessages)}
           </div>
-          <div style={{ fontSize: 24, color: 'rgba(255,255,255,0.5)', marginTop: 10, letterSpacing: '0.02em', wordSpacing: '0.3em' }}>
-            total group messages
+          <div style={{
+            fontSize: 24,
+            color: 'rgba(255,255,255,0.5)',
+            marginTop: 10,
+            letterSpacing: '0.02em',
+            wordSpacing: '0.3em',
+            whiteSpace: 'pre',
+          }}>
+            {'total\u2002group\u2002messages'}
           </div>
+        </div>
+
+        {/* Footer context */}
+        <div style={{
+          marginTop: 16,
+          textAlign: 'center',
+          fontSize: 20,
+          color: 'rgba(255,255,255,0.25)',
+          letterSpacing: '0.03em',
+          whiteSpace: 'pre',
+        }}>
+          {'Based on group chat activity in 2025'}
         </div>
       </div>
     </StoryCard>

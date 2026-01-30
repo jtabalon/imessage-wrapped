@@ -6,14 +6,105 @@ function StreaksStoryCard({ streaks }) {
   const { summary, topStreaks } = streaks
   const longest = summary?.longestOverallStreak
 
+  const normalizeName = (name) => {
+    if (!name) return 'Unknown'
+    return name.replace(/\s+/g, ' ').trim()
+  }
+
+  const displayName = (name) => normalizeName(name).replace(/ /g, '\u2002')
+
+  const wrapToLines = (text, maxChars) => {
+    if (!text) return ['Unknown']
+    const words = text.split(' ')
+    const lines = []
+    let current = ''
+
+    words.forEach((word) => {
+      let remaining = word
+      while (remaining.length > maxChars) {
+        if (current) {
+          lines.push(current)
+          current = ''
+        }
+        lines.push(remaining.slice(0, maxChars))
+        remaining = remaining.slice(maxChars)
+      }
+
+      if (!current) {
+        current = remaining
+      } else if ((current.length + 1 + remaining.length) <= maxChars) {
+        current = `${current} ${remaining}`
+      } else {
+        lines.push(current)
+        current = remaining
+      }
+    })
+
+    if (current) lines.push(current)
+    return lines
+  }
+
+  const fitNameToLines = (rawName, { maxWidth, baseSize, minSize, maxLines }) => {
+    const name = normalizeName(rawName)
+    let fontSize = baseSize
+    let lines = [name]
+
+    while (fontSize >= minSize) {
+      const charsPerLine = Math.max(8, Math.floor(maxWidth / (fontSize * 0.56)))
+      lines = wrapToLines(name, charsPerLine)
+      if (lines.length <= maxLines) break
+      fontSize -= 1
+    }
+
+    const lineHeight = fontSize < 18 ? 1.15 : 1.25
+    return {
+      text: displayName(lines.join('\n')),
+      fontSize,
+      lineHeight,
+    }
+  }
+
+  const listFontSize = (streak) => {
+    const name = streak.name || ''
+    const len = name.length
+    if (len > 32) return 18
+    if (len > 26) return 20
+    if (len > 20) return 22
+    if (len > 16) return 24
+    return 26
+  }
+
   return (
     <StoryCard>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <h2 style={{ fontSize: 56, fontWeight: 700, margin: '0 0 12px 0', wordSpacing: '0.2em' }}>Your Streaks</h2>
-        <p style={{ fontSize: 26, color: 'rgba(255,255,255,0.5)', margin: '0 0 60px 0', letterSpacing: '0.02em', wordSpacing: '0.3em' }}>
-          Consecutive days messaging
+        <h2 style={{
+          fontSize: 56,
+          fontWeight: 800,
+          margin: '0 0 12px 0',
+          letterSpacing: '0.06em',
+          wordSpacing: '0.2em',
+        }}>
+          Your Streaks
+        </h2>
+        <p style={{
+          fontSize: 26,
+          color: 'rgba(255,255,255,0.35)',
+          margin: '0 0 24px 0',
+          letterSpacing: '0.04em',
+          whiteSpace: 'pre',
+        }}>
+          {'Consecutive days messaging'}
         </p>
+
+        {/* Accent divider (orange gradient for fire/streak theme) */}
+        <div style={{
+          width: 120,
+          height: 4,
+          borderRadius: 2,
+          background: 'linear-gradient(90deg, #f97316, #fb923c)',
+          marginBottom: 40,
+        }} />
 
         {/* Big streak highlight */}
         <div style={{
@@ -30,12 +121,25 @@ function StreaksStoryCard({ streaks }) {
           }}>
             {longest?.days || 0}
           </div>
-          <div style={{ fontSize: 36, color: 'rgba(255,255,255,0.6)', marginTop: 56, letterSpacing: '0.02em', wordSpacing: '0.3em' }}>
-            day longest streak
+          <div style={{
+            fontSize: 36,
+            color: 'rgba(255,255,255,0.6)',
+            marginTop: 56,
+            letterSpacing: '0.02em',
+            wordSpacing: '0.3em',
+            whiteSpace: 'pre',
+          }}>
+            {'day\u2002longest\u2002streak'}
           </div>
           {longest?.name && (
-            <div style={{ fontSize: 32, fontWeight: 600, marginTop: 16, color: '#fb923c' }}>
-              {'with ' + longest.name}
+            <div style={{
+              fontSize: 32,
+              fontWeight: 600,
+              marginTop: 16,
+              color: '#fb923c',
+              whiteSpace: 'pre',
+            }}>
+              {'with\u2002' + displayName(longest.name)}
             </div>
           )}
         </div>
@@ -43,59 +147,100 @@ function StreaksStoryCard({ streaks }) {
         {/* Top 5 streaks list */}
         {topStreaks && topStreaks.length > 1 && (
           <div style={{ marginTop: 40 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {topStreaks.slice(0, 5).map((streak, index) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 20,
-                  padding: '20px 24px',
-                  background: 'rgba(255,255,255,0.06)',
-                  borderRadius: 16,
-                }}>
-                  <span style={{ fontSize: 28, width: 44, textAlign: 'center' }}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '#' + (index + 1)}
-                  </span>
-                  <span style={{ fontSize: 26, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {streak.name}
-                  </span>
-                  <span style={{ fontSize: 28, fontWeight: 600, color: '#fb923c' }}>
-                    {streak.longestStreak + 'd'}
-                  </span>
-                  {streak.isActive && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {topStreaks.slice(0, 5).map((streak, index) => {
+                const fontSize = listFontSize(streak)
+                const rawName = normalizeName(streak.name || 'Unknown')
+                const maxLines = rawName.length > 32 ? 3 : 2
+                const nameLayout = fitNameToLines(rawName, {
+                  maxWidth: 440,
+                  baseSize: fontSize,
+                  minSize: 14,
+                  maxLines,
+                })
+
+                return (
+                  <div key={index} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    padding: '22px 24px',
+                    borderBottom: index < Math.min(topStreaks.length, 5) - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  }}>
                     <span style={{
-                      fontSize: 18,
-                      background: 'rgba(34,197,94,0.2)',
-                      color: '#4ade80',
-                      borderRadius: 20,
-                      padding: '4px 14px',
+                      fontSize: 28,
+                      width: 44,
+                      textAlign: 'center',
+                      flexShrink: 0,
                     }}>
-                      active
+                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '#' + (index + 1)}
                     </span>
-                  )}
-                </div>
-              ))}
+                    <span style={{
+                      fontSize: nameLayout.fontSize,
+                      fontWeight: 500,
+                      flex: 1,
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
+                      lineHeight: nameLayout.lineHeight,
+                      minWidth: 0,
+                    }}>
+                      {nameLayout.text}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                      <span style={{ fontSize: 28, fontWeight: 600, color: '#fb923c' }}>
+                        {streak.longestStreak + 'd'}
+                      </span>
+                      {streak.isActive && (
+                        <span style={{
+                          fontSize: 18,
+                          background: 'rgba(34,197,94,0.2)',
+                          color: '#4ade80',
+                          borderRadius: 20,
+                          padding: '4px 14px',
+                        }}>
+                          active
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
 
         {/* Summary stats */}
-        <div style={{ display: 'flex', gap: 24, marginTop: 40 }}>
+        <div style={{ display: 'flex', gap: 0, width: '100%', marginTop: 40 }}>
           {[
             { label: 'Active Streaks', value: String(summary?.activeStreakCount || 0), color: '#4ade80' },
             { label: 'Avg Length', value: (summary?.averageStreakLength || 0) + 'd', color: '#fb923c' },
-          ].map((item) => (
+          ].map((item, index) => (
             <div key={item.label} style={{
               flex: 1,
-              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
               padding: '28px 16px',
-              background: 'rgba(255,255,255,0.06)',
-              borderRadius: 20,
+              borderLeft: index > 0 ? '1px solid rgba(255,255,255,0.1)' : 'none',
             }}>
               <div style={{ fontSize: 44, fontWeight: 700, color: item.color }}>{item.value}</div>
               <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.5)', marginTop: 10, wordSpacing: '0.3em' }}>{item.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Footer context */}
+        <div style={{
+          marginTop: 32,
+          textAlign: 'center',
+          fontSize: 20,
+          color: 'rgba(255,255,255,0.25)',
+          letterSpacing: '0.03em',
+          whiteSpace: 'pre',
+        }}>
+          {'Based on consecutive days with messages'}
         </div>
       </div>
     </StoryCard>
