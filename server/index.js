@@ -1,5 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { homedir, tmpdir } from 'os';
+import { resolve, normalize, extname, join, basename } from 'path';
+import { execFileSync } from 'child_process';
+import { createHash } from 'crypto';
 import { testConnection } from './db.js';
 import {
   getOverallStats,
@@ -8,7 +13,8 @@ import {
   getResponseTimes,
   getEmojiStats,
   getWordFrequency,
-  getSentimentAnalysis
+  getSentimentAnalysis,
+  getStickerStats
 } from './analytics.js';
 
 const app = express();
@@ -113,6 +119,74 @@ app.get('/api/sentiment', (req, res) => {
   }
 });
 
+// Sticker analytics
+app.get('/api/stickers', (req, res) => {
+  try {
+    const stickers = getStickerStats();
+    res.json(stickers);
+  } catch (error) {
+    console.error('Error getting stickers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cache directory for converted HEIC sticker images
+const STICKER_CACHE_DIR = join(tmpdir(), 'imessage-wrapped-sticker-cache');
+mkdirSync(STICKER_CACHE_DIR, { recursive: true });
+
+// Serve sticker image files from disk, converting HEIC/HEIF to JPEG via macOS sips
+app.get('/api/sticker-image', (req, res) => {
+  try {
+    const encodedPath = req.query.path;
+    if (!encodedPath) {
+      return res.status(400).json({ error: 'Missing path parameter' });
+    }
+
+    // Expand ~ to home directory
+    const expandedPath = encodedPath.startsWith('~')
+      ? encodedPath.replace('~', homedir())
+      : encodedPath;
+
+    // Resolve to absolute path and normalize to prevent traversal
+    const absolutePath = resolve(normalize(expandedPath));
+    const allowedPrefix = resolve(homedir(), 'Library', 'Messages');
+
+    if (!absolutePath.startsWith(allowedPrefix)) {
+      return res.status(403).json({ error: 'Access denied: path outside allowed directory' });
+    }
+
+    if (!existsSync(absolutePath)) {
+      return res.status(404).json({ error: 'Sticker file not found' });
+    }
+
+    const ext = extname(absolutePath).toLowerCase();
+    const needsConversion = ['.heic', '.heif'].includes(ext);
+
+    if (needsConversion) {
+      // Use a hash of the path as cache key
+      const hash = createHash('md5').update(absolutePath).digest('hex');
+      const cachedPath = join(STICKER_CACHE_DIR, hash + '.jpeg');
+
+      if (!existsSync(cachedPath)) {
+        // Convert using macOS built-in sips (supports HEIC natively)
+        execFileSync('sips', ['-s', 'format', 'jpeg', absolutePath, '--out', cachedPath], {
+          timeout: 10000
+        });
+      }
+
+      res.set('Content-Type', 'image/jpeg');
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.sendFile(cachedPath);
+    } else {
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.sendFile(absolutePath);
+    }
+  } catch (error) {
+    console.error('Error serving sticker image:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🍎 iMessage Wrapped server running on http://localhost:${PORT}`);
@@ -125,4 +199,6 @@ app.listen(PORT, () => {
   console.log(`   GET /api/emojis - Emoji statistics`);
   console.log(`   GET /api/words - Word frequency`);
   console.log(`   GET /api/sentiment - Sentiment analysis`);
+  console.log(`   GET /api/stickers - Sticker statistics`);
+  console.log(`   GET /api/sticker-image - Serve sticker images`);
 });

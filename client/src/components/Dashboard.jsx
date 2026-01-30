@@ -5,6 +5,7 @@ import EmojiStats from './EmojiStats'
 import ResponseTimes from './ResponseTimes'
 import WordCloud from './WordCloud'
 import SentimentAnalysis from './SentimentAnalysis'
+import StickerStats from './StickerStats'
 
 function Dashboard() {
   const [stats, setStats] = useState(null)
@@ -138,8 +139,13 @@ function Dashboard() {
           <WordCloud />
         </section>
 
-        {/* Sentiment Analysis */}
+        {/* Sticker Stats */}
         <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.8s' }}>
+          <StickerStats />
+        </section>
+
+        {/* Sentiment Analysis */}
+        <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.9s' }}>
           <SentimentAnalysis />
         </section>
 
