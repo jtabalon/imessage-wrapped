@@ -1,5 +1,10 @@
 import { getMessages2025, appleTimestampToDate, getHandles, getDatabase, getContactName, getStickerMessages } from './db.js';
 
+// Helper: format a Date as YYYY-MM-DD in local time
+function toDateString(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // Cache for processed data
 let messagesCache = null;
 
@@ -626,5 +631,227 @@ export function getStickerStats() {
     topStickerSentTo,
     topStickerReceivedFrom,
     monthlyTrend
+  };
+}
+
+// Streak statistics (Snapchat-style consecutive mutual messaging days)
+export function getStreakStats() {
+  const messages = getProcessedMessages();
+
+  // Step 1: Group messages by contact_id, then by date, tracking sent/received
+  const contactDays = {}; // { contactId: { "YYYY-MM-DD": { sent: bool, received: bool, lastIsFromMe: bool } } }
+
+  messages.forEach(msg => {
+    if (!msg.date) return;
+    // Skip group chat messages — streaks only count 1:1 conversations
+    if (msg.chat_identifier && msg.chat_identifier.startsWith('chat')) return;
+
+    const contactId = msg.contact_id || 'Unknown';
+    const dateStr = toDateString(msg.date);
+
+    if (!contactDays[contactId]) contactDays[contactId] = {};
+    if (!contactDays[contactId][dateStr]) {
+      contactDays[contactId][dateStr] = { sent: false, received: false, lastIsFromMe: null };
+    }
+
+    if (msg.is_from_me) {
+      contactDays[contactId][dateStr].sent = true;
+    } else {
+      contactDays[contactId][dateStr].received = true;
+    }
+    contactDays[contactId][dateStr].lastIsFromMe = !!msg.is_from_me;
+  });
+
+  const todayStr = toDateString(new Date());
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = toDateString(yesterdayDate);
+
+  const MILESTONES = [7, 30, 100, 365];
+
+  // Step 2: For each contact, build sorted mutual days and find streaks
+  const allStreaks = []; // { contactId, name, length, startDate, endDate, isActive, milestonesReached, milestoneUnlockDates }
+  const contactBestStreaks = {}; // contactId -> { longest streak info, current streak info }
+
+  Object.entries(contactDays).forEach(([contactId, days]) => {
+    // Get sorted mutual days (both sent AND received)
+    const mutualDays = Object.entries(days)
+      .filter(([_, info]) => info.sent && info.received)
+      .map(([dateStr]) => dateStr)
+      .sort();
+
+    if (mutualDays.length === 0) return;
+
+    const name = getContactName(contactId) || contactId;
+
+    // Walk through mutual days finding consecutive runs
+    let streakStart = mutualDays[0];
+    let streakLength = 1;
+    const streaks = [];
+
+    for (let i = 1; i < mutualDays.length; i++) {
+      const prevDate = new Date(mutualDays[i - 1]);
+      const currDate = new Date(mutualDays[i]);
+      const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        streakLength++;
+      } else {
+        // Streak ended
+        const endDate = mutualDays[i - 1];
+        const milestonesReached = MILESTONES.filter(m => streakLength >= m);
+        const milestoneUnlockDates = {};
+        milestonesReached.forEach(m => {
+          const unlockDate = new Date(streakStart);
+          unlockDate.setDate(unlockDate.getDate() + m - 1);
+          milestoneUnlockDates[m] = toDateString(unlockDate);
+        });
+
+        // Determine who let it die: check the day after the streak ended
+        const dayAfterEnd = new Date(endDate);
+        dayAfterEnd.setDate(dayAfterEnd.getDate() + 1);
+        const dayAfterStr = toDateString(dayAfterEnd);
+        const dayAfterInfo = days[dayAfterStr];
+        let whoLetItDie = null;
+        if (dayAfterInfo) {
+          // Someone messaged but not mutual
+          whoLetItDie = dayAfterInfo.sent ? 'them' : 'you';
+        } else {
+          // Nobody messaged at all - check who sent last on the final day
+          const lastDayInfo = days[endDate];
+          whoLetItDie = lastDayInfo?.lastIsFromMe ? 'them' : 'you';
+        }
+
+        streaks.push({
+          contactId, name, length: streakLength,
+          startDate: streakStart, endDate,
+          milestonesReached, milestoneUnlockDates, whoLetItDie
+        });
+
+        streakStart = mutualDays[i];
+        streakLength = 1;
+      }
+    }
+
+    // Handle the last streak in progress
+    const lastMutualDay = mutualDays[mutualDays.length - 1];
+    const isActive = lastMutualDay === todayStr || lastMutualDay === yesterdayStr;
+    const milestonesReached = MILESTONES.filter(m => streakLength >= m);
+    const milestoneUnlockDates = {};
+    milestonesReached.forEach(m => {
+      const unlockDate = new Date(streakStart);
+      unlockDate.setDate(unlockDate.getDate() + m - 1);
+      milestoneUnlockDates[m] = toDateString(unlockDate);
+    });
+
+    if (isActive) {
+      streaks.push({
+        contactId, name, length: streakLength,
+        startDate: streakStart, endDate: lastMutualDay,
+        isActive: true, milestonesReached, milestoneUnlockDates, whoLetItDie: null
+      });
+    } else {
+      // Last streak also broke
+      const dayAfterEnd = new Date(lastMutualDay);
+      dayAfterEnd.setDate(dayAfterEnd.getDate() + 1);
+      const dayAfterStr = toDateString(dayAfterEnd);
+      const dayAfterInfo = days[dayAfterStr];
+      let whoLetItDie = null;
+      if (dayAfterInfo) {
+        whoLetItDie = dayAfterInfo.sent ? 'them' : 'you';
+      } else {
+        const lastDayInfo = days[lastMutualDay];
+        whoLetItDie = lastDayInfo?.lastIsFromMe ? 'them' : 'you';
+      }
+
+      streaks.push({
+        contactId, name, length: streakLength,
+        startDate: streakStart, endDate: lastMutualDay,
+        isActive: false, milestonesReached, milestoneUnlockDates, whoLetItDie
+      });
+    }
+
+    // Track per-contact best
+    const longest = streaks.reduce((best, s) => s.length > best.length ? s : best, streaks[0]);
+    const activeCurrent = streaks.find(s => s.isActive);
+
+    contactBestStreaks[contactId] = {
+      contactId, name,
+      longestStreak: longest.length,
+      longestStreakStart: longest.startDate,
+      longestStreakEnd: longest.endDate,
+      currentStreak: activeCurrent ? activeCurrent.length : 0,
+      currentStreakStart: activeCurrent ? activeCurrent.startDate : null,
+      isActive: !!activeCurrent
+    };
+
+    allStreaks.push(...streaks);
+  });
+
+  // Option A: Top 10 contacts by longest streak
+  const topStreaks = Object.values(contactBestStreaks)
+    .sort((a, b) => b.longestStreak - a.longestStreak)
+    .slice(0, 10);
+
+  // Option C: Top 5 longest streaks as story cards (enriched with milestones)
+  const allSorted = [...allStreaks].sort((a, b) => b.length - a.length);
+  const streakStories = allSorted.slice(0, 6).map(s => ({
+    contactId: s.contactId,
+    name: s.name,
+    longestStreak: s.length,
+    longestStreakStart: s.startDate,
+    longestStreakEnd: s.endDate,
+    currentStreak: contactBestStreaks[s.contactId]?.currentStreak || 0,
+    isActive: s.isActive,
+    milestonesReached: s.milestonesReached,
+    milestoneUnlockDates: s.milestoneUnlockDates
+  }));
+
+  // Option C: Biggest broken streaks (top 5)
+  const brokenStreaks = allStreaks
+    .filter(s => !s.isActive && s.length >= 2)
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 5)
+    .map(s => ({
+      contactId: s.contactId,
+      name: s.name,
+      streakLength: s.length,
+      endDate: s.endDate,
+      whoLetItDie: s.whoLetItDie
+    }));
+
+  // Summary stats
+  const totalStreaksStarted = allStreaks.filter(s => s.length >= 2).length;
+  const streakLengths = allStreaks.filter(s => s.length >= 2).map(s => s.length);
+  const totalStreakDays = streakLengths.reduce((sum, l) => sum + l, 0);
+  const averageStreakLength = streakLengths.length > 0
+    ? Math.round((totalStreakDays / streakLengths.length) * 10) / 10
+    : 0;
+
+  const longestOverall = allSorted[0] || null;
+  const activeStreaks = allStreaks.filter(s => s.isActive).sort((a, b) => b.length - a.length);
+  const longestActive = activeStreaks[0] || null;
+
+  return {
+    topStreaks,
+    streakStories,
+    biggestStreakDeaths: brokenStreaks,
+    summary: {
+      totalStreaksStarted,
+      averageStreakLength,
+      totalStreakDays,
+      longestOverallStreak: longestOverall ? {
+        name: longestOverall.name,
+        days: longestOverall.length,
+        start: longestOverall.startDate,
+        end: longestOverall.endDate
+      } : null,
+      longestActiveStreak: longestActive ? {
+        name: longestActive.name,
+        days: longestActive.length,
+        start: longestActive.startDate
+      } : null,
+      activeStreakCount: activeStreaks.length
+    }
   };
 }

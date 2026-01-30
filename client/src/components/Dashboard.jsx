@@ -5,6 +5,7 @@ import EmojiStats from './EmojiStats'
 import ResponseTimes from './ResponseTimes'
 import WordCloud from './WordCloud'
 import SentimentAnalysis from './SentimentAnalysis'
+import Streaks from './Streaks'
 import StickerStats from './StickerStats'
 
 function Dashboard() {
@@ -129,23 +130,28 @@ function Dashboard() {
           <ResponseTimes />
         </section>
 
-        {/* Emoji Stats */}
+        {/* Streaks */}
         <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.6s' }}>
+          <Streaks />
+        </section>
+
+        {/* Emoji Stats */}
+        <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.7s' }}>
           <EmojiStats />
         </section>
 
         {/* Word Cloud */}
-        <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.7s' }}>
+        <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.8s' }}>
           <WordCloud />
         </section>
 
         {/* Sticker Stats */}
-        <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.8s' }}>
+        <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.9s' }}>
           <StickerStats />
         </section>
 
         {/* Sentiment Analysis */}
-        <section className="mb-12 animate-slide-up" style={{ animationDelay: '0.9s' }}>
+        <section className="mb-12 animate-slide-up" style={{ animationDelay: '1.0s' }}>
           <SentimentAnalysis />
         </section>
 

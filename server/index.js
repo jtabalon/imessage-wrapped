@@ -14,7 +14,8 @@ import {
   getEmojiStats,
   getWordFrequency,
   getSentimentAnalysis,
-  getStickerStats
+  getStickerStats,
+  getStreakStats
 } from './analytics.js';
 
 const app = express();
@@ -119,6 +120,17 @@ app.get('/api/sentiment', (req, res) => {
   }
 });
 
+// Streak statistics
+app.get('/api/streaks', (req, res) => {
+  try {
+    const streaks = getStreakStats();
+    res.json(streaks);
+  } catch (error) {
+    console.error('Error getting streaks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Sticker analytics
 app.get('/api/stickers', (req, res) => {
   try {
@@ -199,6 +211,7 @@ app.listen(PORT, () => {
   console.log(`   GET /api/emojis - Emoji statistics`);
   console.log(`   GET /api/words - Word frequency`);
   console.log(`   GET /api/sentiment - Sentiment analysis`);
+  console.log(`   GET /api/streaks - Streak statistics`);
   console.log(`   GET /api/stickers - Sticker statistics`);
   console.log(`   GET /api/sticker-image - Serve sticker images`);
 });
