@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   LineChart, Line, Legend,
   XAxis, YAxis, Tooltip, ResponsiveContainer
@@ -36,7 +36,36 @@ function StickerStats() {
 
   const StickerImage = ({ filename, transfer_name, size = 64 }) => {
     const [errored, setErrored] = useState(false)
+    const [popover, setPopover] = useState(null)
+    const imgRef = useRef(null)
     const url = stickerImageUrl(filename)
+
+    useEffect(() => {
+      if (!popover) return
+      const dismiss = () => setPopover(null)
+      const handleEsc = (e) => { if (e.key === 'Escape') dismiss() }
+      document.addEventListener('mousedown', dismiss)
+      document.addEventListener('keydown', handleEsc)
+      return () => {
+        document.removeEventListener('mousedown', dismiss)
+        document.removeEventListener('keydown', handleEsc)
+      }
+    }, [popover])
+
+    const handleClick = (e) => {
+      e.stopPropagation()
+      if (popover) {
+        setPopover(null)
+        return
+      }
+      const rect = imgRef.current.getBoundingClientRect()
+      const popSize = 208 // 192 image + 16 padding
+      let left = rect.left + rect.width / 2 - popSize / 2
+      left = Math.max(8, Math.min(left, window.innerWidth - popSize - 8))
+      let top = rect.top - popSize - 8
+      if (top < 8) top = rect.bottom + 8
+      setPopover({ top, left })
+    }
 
     if (!url || errored) {
       return (
@@ -50,13 +79,31 @@ function StickerStats() {
     }
 
     return (
-      <img
-        src={url}
-        alt={transfer_name || 'sticker'}
-        style={{ width: size, height: size, objectFit: 'contain' }}
-        className="rounded-lg"
-        onError={() => setErrored(true)}
-      />
+      <>
+        <img
+          ref={imgRef}
+          src={url}
+          alt={transfer_name || 'sticker'}
+          style={{ width: size, height: size, objectFit: 'contain' }}
+          className="rounded-lg cursor-pointer"
+          onClick={handleClick}
+          onError={() => setErrored(true)}
+        />
+        {popover && (
+          <div
+            className="fixed bg-gray-900/95 backdrop-blur rounded-xl border border-white/10 p-2 shadow-xl z-50"
+            style={{ top: popover.top, left: popover.left }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <img
+              src={url}
+              alt={transfer_name || 'sticker'}
+              style={{ width: 192, height: 192, objectFit: 'contain' }}
+              className="rounded-lg"
+            />
+          </div>
+        )}
+      </>
     )
   }
 
