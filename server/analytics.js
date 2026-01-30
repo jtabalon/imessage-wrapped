@@ -867,11 +867,22 @@ export function getGroupChatStats() {
   memberRows.forEach(row => {
     if (!chatMembersMap[row.chat_identifier]) {
       chatMembersMap[row.chat_identifier] = {
-        chatName: row.chat_name || row.chat_identifier,
+        chatName: row.chat_name || null,
         members: new Set()
       };
     }
     chatMembersMap[row.chat_identifier].members.add(row.handle_id);
+  });
+
+  // For unnamed group chats, generate a name from member names
+  Object.entries(chatMembersMap).forEach(([chatId, info]) => {
+    if (!info.chatName) {
+      const names = [...info.members]
+        .map(hid => getContactName(hid) || hid)
+        .map(n => n.split(' ')[0]) // first name only
+        .slice(0, 4);
+      info.chatName = names.join(', ') + (info.members.size > 4 ? `, +${info.members.size - 4}` : '');
+    }
   });
 
   // Step 2: Filter to group chat messages and aggregate per chat
