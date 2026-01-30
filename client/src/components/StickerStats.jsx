@@ -141,13 +141,12 @@ function StickerStats() {
         {data.topStickersSent?.length > 0 && (
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Top Sent</h3>
-            <div className="space-y-3">
+            <div className="grid grid-cols-5 gap-3">
               {data.topStickersSent.slice(0, 5).map((item, index) => (
-                <div key={index} className="flex items-center gap-3 bg-white/5 rounded-lg p-2">
-                  <span className="text-white/40 text-sm w-5 text-right">{index + 1}</span>
-                  <StickerImage filename={item.filename} transfer_name={item.transfer_name} size={36} />
-                  <span className="text-white/60 text-sm truncate flex-1">{item.transfer_name || 'Unknown'}</span>
-                  <span className="text-purple-400 font-semibold">{formatNumber(item.count)}</span>
+                <div key={index} className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-2 hover:bg-white/10 transition-colors">
+                  <span className="text-white/30 text-xs">#{index + 1}</span>
+                  <StickerImage filename={item.filename} transfer_name={item.transfer_name} size={48} />
+                  <span className="text-purple-400 font-semibold text-sm">{formatNumber(item.count)}</span>
                 </div>
               ))}
             </div>
@@ -158,13 +157,12 @@ function StickerStats() {
         {data.topStickersReceived?.length > 0 && (
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Top Received</h3>
-            <div className="space-y-3">
+            <div className="grid grid-cols-5 gap-3">
               {data.topStickersReceived.slice(0, 5).map((item, index) => (
-                <div key={index} className="flex items-center gap-3 bg-white/5 rounded-lg p-2">
-                  <span className="text-white/40 text-sm w-5 text-right">{index + 1}</span>
-                  <StickerImage filename={item.filename} transfer_name={item.transfer_name} size={36} />
-                  <span className="text-white/60 text-sm truncate flex-1">{item.transfer_name || 'Unknown'}</span>
-                  <span className="text-pink-400 font-semibold">{formatNumber(item.count)}</span>
+                <div key={index} className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-2 hover:bg-white/10 transition-colors">
+                  <span className="text-white/30 text-xs">#{index + 1}</span>
+                  <StickerImage filename={item.filename} transfer_name={item.transfer_name} size={48} />
+                  <span className="text-pink-400 font-semibold text-sm">{formatNumber(item.count)}</span>
                 </div>
               ))}
             </div>
@@ -218,19 +216,16 @@ function StickerStats() {
       {data.perContactFavorite?.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-white mb-4">Favorite Sticker Per Contact</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {data.perContactFavorite.map((item, index) => (
-              <div key={index} className="flex items-center gap-3 bg-white/5 rounded-lg p-3">
+              <div key={index} className="flex flex-col items-center gap-2 bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
                 <StickerImage
                   filename={item.favoriteSticker?.filename}
                   transfer_name={item.favoriteSticker?.transfer_name}
-                  size={36}
+                  size={48}
                 />
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{item.name}</p>
-                  <p className="text-white/40 text-xs truncate">{item.favoriteSticker?.transfer_name || 'Unknown'}</p>
-                </div>
-                <span className="text-cyan-400 font-semibold text-sm">{formatNumber(item.favoriteSticker?.count)}</span>
+                <p className="text-white text-sm font-medium truncate w-full text-center">{item.name}</p>
+                <span className="text-cyan-400 font-semibold text-xs">{formatNumber(item.favoriteSticker?.count)}</span>
               </div>
             ))}
           </div>
