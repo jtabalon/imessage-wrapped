@@ -39,13 +39,13 @@ function TitleStoryCard({ stats }) {
         </p>
 
         {/* Big number */}
-        <div style={{ textAlign: 'center', marginBottom: 120 }}>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <div style={{ fontSize: 160, fontWeight: 800, lineHeight: 1 }}>
             {formatNumber(stats.totalMessages)}
           </div>
           <div style={{
-            fontSize: 32,
-            color: 'rgba(255,255,255,0.6)',
+            fontSize: 36,
+            color: 'rgba(255,255,255,0.75)',
             marginTop: 48,
             letterSpacing: '0.02em',
             wordSpacing: '0.3em',
@@ -54,13 +54,22 @@ function TitleStoryCard({ stats }) {
           </div>
         </div>
 
+        {/* Accent divider */}
+        <div style={{
+          width: 120,
+          height: 4,
+          borderRadius: 2,
+          background: 'linear-gradient(90deg, #a78bfa, #f472b6)',
+          marginBottom: 40,
+        }} />
+
         {/* Stats row */}
-        <div style={{ display: 'flex', gap: 32, width: '100%' }}>
+        <div style={{ display: 'flex', gap: 0, width: '100%' }}>
           {[
             { label: 'Sent', value: formatNumber(stats.sent), color: '#f093fb' },
             { label: 'Received', value: formatNumber(stats.received), color: '#4facfe' },
             { label: 'Conversations', value: formatNumber(stats.uniqueConversations), color: '#43e97b' },
-          ].map((item) => (
+          ].map((item, index) => (
             <div key={item.label} style={{
               flex: 1,
               display: 'flex',
@@ -68,8 +77,7 @@ function TitleStoryCard({ stats }) {
               alignItems: 'center',
               justifyContent: 'center',
               padding: '28px 16px',
-              background: 'rgba(255,255,255,0.06)',
-              borderRadius: 20,
+              borderLeft: index > 0 ? '1px solid rgba(255,255,255,0.1)' : 'none',
             }}>
               <div style={{ fontSize: 48, fontWeight: 700, color: item.color }}>{item.value}</div>
               <div style={{ fontSize: 24, color: 'rgba(255,255,255,0.5)', marginTop: 10 }}>{item.label}</div>
