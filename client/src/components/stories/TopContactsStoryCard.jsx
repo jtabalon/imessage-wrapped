@@ -15,24 +15,77 @@ function TopContactsStoryCard({ contacts }) {
   }
 
   // Replace regular spaces with en-spaces so html2canvas doesn't collapse them
-  const spaceName = (name) => {
+  const normalizeName = (name) => {
     if (!name) return 'Unknown'
-    return name.replace(/ /g, '\u2002')
+    return name.replace(/\s+/g, ' ').trim()
   }
 
   // Format phone numbers for readability: +18587761020 → +1 858 776 1020
   const formatPhone = (str) => {
     if (!str) return str
     const match = str.match(/^\+?1?(\d{3})(\d{3})(\d{4})$/)
-    if (match) return `+1\u2002${match[1]}\u2002${match[2]}\u2002${match[3]}`
+    if (match) return `+1 ${match[1]} ${match[2]} ${match[3]}`
     return str
   }
 
-  const displayName = (contact) => {
+  const rawDisplayName = (contact) => {
     const raw = contact.name || contact.id || 'Unknown'
     // If it looks like a phone number, format it
     if (/^\+?\d{10,}$/.test(raw)) return formatPhone(raw)
-    return spaceName(raw)
+    return normalizeName(raw)
+  }
+
+  const displayName = (name) => normalizeName(name).replace(/ /g, '\u2002')
+
+  const wrapToLines = (text, maxChars) => {
+    if (!text) return ['Unknown']
+    const words = text.split(' ')
+    const lines = []
+    let current = ''
+
+    words.forEach((word) => {
+      let remaining = word
+      while (remaining.length > maxChars) {
+        if (current) {
+          lines.push(current)
+          current = ''
+        }
+        lines.push(remaining.slice(0, maxChars))
+        remaining = remaining.slice(maxChars)
+      }
+
+      if (!current) {
+        current = remaining
+      } else if ((current.length + 1 + remaining.length) <= maxChars) {
+        current = `${current} ${remaining}`
+      } else {
+        lines.push(current)
+        current = remaining
+      }
+    })
+
+    if (current) lines.push(current)
+    return lines
+  }
+
+  const fitNameToLines = (rawName, { maxWidth, baseSize, minSize, maxLines }) => {
+    const name = normalizeName(rawName)
+    let fontSize = baseSize
+    let lines = [name]
+
+    while (fontSize >= minSize) {
+      const charsPerLine = Math.max(8, Math.floor(maxWidth / (fontSize * 0.56)))
+      lines = wrapToLines(name, charsPerLine)
+      if (lines.length <= maxLines) break
+      fontSize -= 1
+    }
+
+    const lineHeight = fontSize < 18 ? 1.15 : 1.25
+    return {
+      text: displayName(lines.join('\n')),
+      fontSize,
+      lineHeight,
+    }
   }
 
   // Dynamic font size: shrink for longer identifiers to prevent truncation
@@ -40,15 +93,18 @@ function TopContactsStoryCard({ contacts }) {
     const name = contact.name || contact.id || ''
     const len = name.length
     const base = isFirst ? 22 : 20
-    if (len > 20) return base - 5
-    if (len > 16) return base - 3
-    if (len > 13) return base - 1
+    if (len > 26) return base - 7
+    if (len > 22) return base - 6
+    if (len > 18) return base - 4
+    if (len > 14) return base - 2
     return base
   }
 
   const listFontSize = (contact) => {
     const name = contact.name || contact.id || ''
     const len = name.length
+    if (len > 32) return 16
+    if (len > 26) return 18
     if (len > 20) return 20
     if (len > 16) return 22
     return 26
@@ -57,7 +113,7 @@ function TopContactsStoryCard({ contacts }) {
   const top3 = contacts.slice(0, 3)
   const rest = contacts.slice(3, 8)
   const maxTotal = top3[0]?.total || 1
-  const firstName = (top3[0]?.name || top3[0]?.id || 'them').split(' ')[0]
+  const firstName = rawDisplayName(top3[0] || {}).split(' ')[0] || 'them'
 
   return (
     <StoryCard>
@@ -99,6 +155,14 @@ function TopContactsStoryCard({ contacts }) {
             const cardWidth = isFirst ? 270 : 235
             const medals = ['🥇', '🥈', '🥉']
             const nameFontSize = podiumFontSize(contact, isFirst)
+            const rawName = rawDisplayName(contact)
+            const maxLines = rawName.length > 26 ? 3 : 2
+            const nameLayout = fitNameToLines(rawName, {
+              maxWidth: cardWidth - 56,
+              baseSize: nameFontSize,
+              minSize: 14,
+              maxLines,
+            })
 
             return (
               <div key={actualIndex} style={{
@@ -116,12 +180,13 @@ function TopContactsStoryCard({ contacts }) {
                 {isFirst && (
                   <div style={{
                     position: 'absolute',
-                    top: 24,
-                    left: -24,
-                    right: -24,
-                    bottom: -24,
-                    borderRadius: 32,
-                    background: 'radial-gradient(ellipse, rgba(99, 102, 241, 0.35) 0%, transparent 70%)',
+                    top: -10,
+                    left: -10,
+                    right: -10,
+                    bottom: -10,
+                    borderRadius: 36,
+                    background: 'radial-gradient(circle at 50% 55%, rgba(255,255,255,0.12) 0%, rgba(99,102,241,0.08) 35%, transparent 70%)',
+                    pointerEvents: 'none',
                   }} />
                 )}
 
@@ -158,15 +223,16 @@ function TopContactsStoryCard({ contacts }) {
                     boxSizing: 'border-box',
                   }}>
                     <div style={{
-                      fontSize: nameFontSize,
+                      fontSize: nameLayout.fontSize,
                       fontWeight: 500,
                       color: 'rgba(255,255,255,0.95)',
                       textAlign: 'center',
                       whiteSpace: 'pre-wrap',
-                      overflowWrap: 'break-word',
-                      lineHeight: 1.35,
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
+                      lineHeight: nameLayout.lineHeight,
                     }}>
-                      {displayName(contact)}
+                      {nameLayout.text}
                     </div>
                   </div>
                 </div>
@@ -204,6 +270,14 @@ function TopContactsStoryCard({ contacts }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           {rest.map((contact, index) => {
             const fontSize = listFontSize(contact)
+            const rawName = rawDisplayName(contact)
+            const maxLines = rawName.length > 32 ? 3 : 2
+            const nameLayout = fitNameToLines(rawName, {
+              maxWidth: 520,
+              baseSize: fontSize,
+              minSize: 14,
+              maxLines,
+            })
             return (
               <div key={index} style={{
                 display: 'flex',
@@ -223,15 +297,16 @@ function TopContactsStoryCard({ contacts }) {
                   {'#'}{index + 4}
                 </span>
                 <span style={{
-                  fontSize,
+                  fontSize: nameLayout.fontSize,
                   fontWeight: 500,
                   flex: 1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'pre',
+                  whiteSpace: 'pre-wrap',
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'break-word',
+                  lineHeight: nameLayout.lineHeight,
                   minWidth: 0,
                 }}>
-                  {displayName(contact)}
+                  {nameLayout.text}
                 </span>
                 <span style={{
                   fontSize: 26,

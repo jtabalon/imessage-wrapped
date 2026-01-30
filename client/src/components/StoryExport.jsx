@@ -15,6 +15,20 @@ function StoryExport() {
   const [progress, setProgress] = useState('')
   const containerRef = useRef(null)
 
+  const useTopContactsFixture = typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('fixture') === 'top-contacts'
+
+  const fixtureContacts = [
+    { name: 'Zaineb Boujil', id: '1', total: 41500 },
+    { name: 'Brianna Carino', id: '2', total: 25000 },
+    { name: 'Loraine Parayno', id: '3', total: 21500 },
+    { name: 'Jasmine Tabalon', id: '4', total: 19200 },
+    { name: 'Camryn Ferrer', id: '5', total: 16600 },
+    { name: 'Ramil C. with a Very Very Long Name That Keeps Going', id: '6', total: 12600 },
+    { name: 'Brian Pak', id: '7', total: 11800 },
+    { name: '+18587761020', id: '8', total: 8100 },
+  ]
+
   const { data: stats } = useApiData('/api/stats')
   const { data: contacts } = useApiData('/api/contacts')
   const { data: activity } = useApiData('/api/activity')
@@ -22,9 +36,11 @@ function StoryExport() {
   const { data: streaks } = useApiData('/api/streaks')
   const { data: groupChats } = useApiData('/api/group-chats')
 
+  const resolvedContacts = useTopContactsFixture ? fixtureContacts : contacts
+
   const cards = [
     { id: 'title', name: '01-title', component: <TitleStoryCard stats={stats} /> },
-    { id: 'contacts', name: '02-top-contacts', component: <TopContactsStoryCard contacts={contacts} /> },
+    { id: 'contacts', name: '02-top-contacts', component: <TopContactsStoryCard contacts={resolvedContacts} /> },
     { id: 'activity', name: '03-activity', component: <ActivityStoryCard activity={activity} /> },
     { id: 'emojis', name: '04-emojis', component: <EmojiStoryCard emojis={emojis} /> },
     { id: 'streaks', name: '05-streaks', component: <StreaksStoryCard streaks={streaks} /> },
