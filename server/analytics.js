@@ -960,7 +960,7 @@ export function getGroupChatStats() {
   const sorted = Object.values(chatStats)
     .sort((a, b) => b.totalMessages - a.totalMessages);
   const top10 = sorted.slice(0, 10);
-  const top5 = sorted.slice(0, 5);
+  const top5 = sorted.slice(0, 10);
 
   // Step 4: Build leaderboard
   const leaderboard = top10.map(stat => ({
