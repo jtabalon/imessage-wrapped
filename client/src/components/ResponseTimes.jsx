@@ -1,24 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useApiData } from '../hooks/useApiData'
 
 function ResponseTimes() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchResponseTimes()
-  }, [])
-
-  const fetchResponseTimes = async () => {
-    try {
-      const res = await fetch('/api/response-times')
-      const data = await res.json()
-      setData(data)
-    } catch (err) {
-      console.error('Error fetching response times:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, loading } = useApiData('/api/response-times')
 
   const formatTime = (minutes) => {
     if (!minutes && minutes !== 0) return 'N/A'

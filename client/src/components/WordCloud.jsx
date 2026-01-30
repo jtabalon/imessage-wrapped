@@ -1,25 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import ReactWordcloud from 'react-wordcloud'
+import { useApiData } from '../hooks/useApiData'
 
 function WordCloud() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchWords()
-  }, [])
-
-  const fetchWords = async () => {
-    try {
-      const res = await fetch('/api/words')
-      const data = await res.json()
-      setData(data)
-    } catch (err) {
-      console.error('Error fetching words:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, loading } = useApiData('/api/words')
 
   const formatNumber = (num) => {
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'

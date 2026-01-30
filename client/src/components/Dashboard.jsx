@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import TopContacts from './TopContacts'
 import ActivityChart from './ActivityChart'
 import EmojiStats from './EmojiStats'
@@ -8,26 +7,11 @@ import SentimentAnalysis from './SentimentAnalysis'
 import Streaks from './Streaks'
 import GroupChats from './GroupChats'
 import StickerStats from './StickerStats'
+import StoryExport from './StoryExport'
+import { useApiData } from '../hooks/useApiData'
 
 function Dashboard() {
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchStats()
-  }, [])
-
-  const fetchStats = async () => {
-    try {
-      const res = await fetch('/api/stats')
-      const data = await res.json()
-      setStats(data)
-    } catch (err) {
-      console.error('Error fetching stats:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: stats, loading } = useApiData('/api/stats')
 
   const formatNumber = (num) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
@@ -59,7 +43,8 @@ function Dashboard() {
           <h1 className="text-5xl md:text-7xl font-bold gradient-text mb-4">
             iMessage Wrapped
           </h1>
-          <p className="text-xl text-white/60">Your iMessage history in review</p>
+          <p className="text-xl text-white/60 mb-6">Your iMessage history in review</p>
+          <StoryExport />
         </header>
 
         {/* Overall Stats */}

@@ -1,25 +1,8 @@
-import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { useApiData } from '../hooks/useApiData'
 
 function EmojiStats() {
-  const [emojis, setEmojis] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchEmojis()
-  }, [])
-
-  const fetchEmojis = async () => {
-    try {
-      const res = await fetch('/api/emojis')
-      const data = await res.json()
-      setEmojis(data)
-    } catch (err) {
-      console.error('Error fetching emojis:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: emojis, loading } = useApiData('/api/emojis')
 
   const formatNumber = (num) => {
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'

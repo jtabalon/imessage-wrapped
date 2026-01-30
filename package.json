@@ -7,7 +7,8 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "node server/index.js",
     "client": "cd client && npm run dev",
-    "install:all": "npm install && cd client && npm install --legacy-peer-deps"
+    "install:all": "npm install && cd client && npm install --legacy-peer-deps",
+    "export": "node scripts/export.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.6.0",

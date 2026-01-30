@@ -1,25 +1,8 @@
-import { useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts'
+import { useApiData } from '../hooks/useApiData'
 
 function SentimentAnalysis() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchSentiment()
-  }, [])
-
-  const fetchSentiment = async () => {
-    try {
-      const res = await fetch('/api/sentiment')
-      const data = await res.json()
-      setData(data)
-    } catch (err) {
-      console.error('Error fetching sentiment:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, loading } = useApiData('/api/sentiment')
 
   const formatNumber = (num) => {
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'

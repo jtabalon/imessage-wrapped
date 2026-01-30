@@ -1,26 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
+import { useApiData } from '../hooks/useApiData'
 
 function ActivityChart() {
-  const [activity, setActivity] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { data: activity, loading } = useApiData('/api/activity')
   const [view, setView] = useState('monthly') // monthly, hourly, dayOfWeek, heatmap
-
-  useEffect(() => {
-    fetchActivity()
-  }, [])
-
-  const fetchActivity = async () => {
-    try {
-      const res = await fetch('/api/activity')
-      const data = await res.json()
-      setActivity(data)
-    } catch (err) {
-      console.error('Error fetching activity:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const formatNumber = (num) => {
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'

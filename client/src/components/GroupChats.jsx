@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   AreaChart, Area
 } from 'recharts'
+import { useApiData } from '../hooks/useApiData'
 
 const gradients = [
   ['#667eea', '#764ba2'],
@@ -18,25 +19,8 @@ const gradients = [
 ]
 
 function GroupChats() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { data, loading } = useApiData('/api/group-chats')
   const [selectedChat, setSelectedChat] = useState(null)
-
-  useEffect(() => {
-    fetchGroupChats()
-  }, [])
-
-  const fetchGroupChats = async () => {
-    try {
-      const res = await fetch('/api/group-chats')
-      const json = await res.json()
-      setData(json)
-    } catch (err) {
-      console.error('Error fetching group chats:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const formatNumber = (num) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
