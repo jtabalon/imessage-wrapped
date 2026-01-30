@@ -101,7 +101,7 @@ function TopContacts() {
       </div>
 
       {/* Chart */}
-      <div className="h-64">
+      <div className="h-[28rem]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={contacts}
