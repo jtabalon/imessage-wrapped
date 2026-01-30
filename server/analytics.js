@@ -551,18 +551,24 @@ export function getStickerStats() {
   const received = stickers.filter(s => !s.is_from_me);
   const uniqueKeys = new Set(stickers.map(s => s.stickerKey));
 
-  // Helper: count stickers by key and return top N
+  // Helper: count stickers by key, track top contact per sticker, return top N
   function topByKey(list, limit = 10) {
     const counts = {};
     list.forEach(s => {
       if (!counts[s.stickerKey]) {
-        counts[s.stickerKey] = { stickerKey: s.stickerKey, filename: s.filename, transfer_name: s.transfer_name, count: 0 };
+        counts[s.stickerKey] = { stickerKey: s.stickerKey, filename: s.filename, transfer_name: s.transfer_name, count: 0, contactCounts: {} };
       }
       counts[s.stickerKey].count++;
+      const contactId = s.contact_id || 'Unknown';
+      counts[s.stickerKey].contactCounts[contactId] = (counts[s.stickerKey].contactCounts[contactId] || 0) + 1;
     });
     return Object.values(counts)
       .sort((a, b) => b.count - a.count)
-      .slice(0, limit);
+      .slice(0, limit)
+      .map(({ contactCounts, ...rest }) => {
+        const topContact = Object.entries(contactCounts).sort((a, b) => b[1] - a[1])[0];
+        return { ...rest, topContact: topContact ? (getContactName(topContact[0]) || topContact[0]) : null };
+      });
   }
 
   // Per-contact favorite sticker

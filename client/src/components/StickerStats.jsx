@@ -125,10 +125,16 @@ function StickerStats() {
             {data.topStickersOverall.map((item, index) => (
               <div
                 key={index}
-                className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-2 hover:bg-white/10 transition-colors"
+                className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-2 hover:bg-white/10 transition-colors relative group"
+                title={item.topContact ? `Top contact: ${item.topContact}` : undefined}
               >
                 <StickerImage filename={item.filename} transfer_name={item.transfer_name} size={48} />
                 <span className="text-xs text-white/40">{formatNumber(item.count)}</span>
+                {item.topContact && (
+                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur text-white text-xs px-2 py-1 rounded whitespace-nowrap border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    {item.topContact}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -143,10 +149,15 @@ function StickerStats() {
             <h3 className="text-lg font-semibold text-white mb-4">Top Sent</h3>
             <div className="grid grid-cols-5 gap-3">
               {data.topStickersSent.slice(0, 5).map((item, index) => (
-                <div key={index} className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-2 hover:bg-white/10 transition-colors">
+                <div key={index} className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-2 hover:bg-white/10 transition-colors relative group">
                   <span className="text-white/30 text-xs">#{index + 1}</span>
                   <StickerImage filename={item.filename} transfer_name={item.transfer_name} size={48} />
                   <span className="text-purple-400 font-semibold text-sm">{formatNumber(item.count)}</span>
+                  {item.topContact && (
+                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur text-white text-xs px-2 py-1 rounded whitespace-nowrap border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {item.topContact}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -159,10 +170,15 @@ function StickerStats() {
             <h3 className="text-lg font-semibold text-white mb-4">Top Received</h3>
             <div className="grid grid-cols-5 gap-3">
               {data.topStickersReceived.slice(0, 5).map((item, index) => (
-                <div key={index} className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-2 hover:bg-white/10 transition-colors">
+                <div key={index} className="flex flex-col items-center gap-1 bg-white/5 rounded-lg p-2 hover:bg-white/10 transition-colors relative group">
                   <span className="text-white/30 text-xs">#{index + 1}</span>
                   <StickerImage filename={item.filename} transfer_name={item.transfer_name} size={48} />
                   <span className="text-pink-400 font-semibold text-sm">{formatNumber(item.count)}</span>
+                  {item.topContact && (
+                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur text-white text-xs px-2 py-1 rounded whitespace-nowrap border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {item.topContact}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
