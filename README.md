@@ -9,67 +9,71 @@ A "Spotify Wrapped" style application that analyzes your iMessage history from 2
 - **Activity Patterns**: Heatmaps showing when you message most (hourly, daily, monthly)
 - **Response Times**: See who you reply to fastest and who replies to you quickest
 - **Emoji Stats**: Your most used emojis with trends over time
+- **Sticker Stats**: Your most sent stickers
 - **Word Cloud**: Visual representation of your most common words
 - **Sentiment Analysis**: Mood trends and emotional tone of your conversations
+- **Streaks**: Your longest messaging streaks
+- **Group Chats**: Analytics across your group conversations
+- **Story Export**: Export your stats as Instagram story-style images
 
 ## Prerequisites
 
 - macOS (iMessage database is macOS-only)
-- Node.js 18+
-- Full Disk Access granted to Terminal
+- [Node.js](https://nodejs.org/) 18 or later
+- Full Disk Access granted to your terminal app (see below)
 
 ### Granting Full Disk Access
 
-1. Open **System Preferences** > **Security & Privacy**
-2. Go to **Privacy** > **Full Disk Access**
-3. Click the lock to make changes
-4. Add **Terminal** (or your terminal app like iTerm2)
-5. Restart your terminal
+1. Open **System Settings** > **Privacy & Security** > **Full Disk Access**
+2. Toggle on your terminal app (Terminal, iTerm2, Warp, etc.)
+3. Restart your terminal
 
-## Installation
+## Quick Start
+
+The easiest way to get running is the included setup script. It checks prerequisites, installs dependencies, and starts the app:
 
 ```bash
-# Navigate to the project directory
+git clone <repo-url> imessage-wrapped
 cd imessage-wrapped
-
-# Install all dependencies
-npm run install:all
+./run.sh
 ```
 
-## Usage
+The app will open automatically at **http://localhost:5173**.
 
-### Development Mode
+## Manual Setup
 
-Run both the backend and frontend concurrently:
+If you prefer to install step by step:
 
 ```bash
+git clone <repo-url> imessage-wrapped
+cd imessage-wrapped
+
+# Install backend and frontend dependencies
+npm run install:all
+
+# Start the app (backend + frontend)
 npm run dev
 ```
 
-Or run them separately:
+Then open **http://localhost:5173** in your browser.
+
+### Running Backend and Frontend Separately
 
 ```bash
-# Terminal 1: Start the backend
+# Terminal 1: Start the backend (port 3001)
 npm run server
 
-# Terminal 2: Start the frontend
+# Terminal 2: Start the frontend (port 5173)
 npm run client
 ```
 
-### Accessing the App
-
-1. Open your browser to **http://localhost:5173**
-2. The app will connect to your iMessage database and generate insights
-3. Explore your 2025 messaging year!
-
 ## Tech Stack
 
-- **Backend**: Node.js with Express
-- **Frontend**: React with Vite
-- **Database**: SQLite (reading macOS iMessage chat.db)
+- **Backend**: Node.js, Express, better-sqlite3
+- **Frontend**: React, Vite, Tailwind CSS
 - **Charts**: Recharts
-- **Styling**: Tailwind CSS
 - **Word Cloud**: react-wordcloud
+- **Export**: html2canvas, JSZip
 
 ## API Endpoints
 
@@ -83,6 +87,9 @@ npm run client
 | `GET /api/emojis` | Emoji statistics |
 | `GET /api/words` | Word frequency for cloud |
 | `GET /api/sentiment` | Sentiment analysis |
+| `GET /api/streaks` | Streak statistics |
+| `GET /api/group-chats` | Group chat analytics |
+| `GET /api/stickers` | Sticker statistics |
 
 ## Privacy
 
@@ -93,10 +100,18 @@ npm run client
 ## Troubleshooting
 
 ### "Cannot access iMessage database"
-Make sure you've granted Full Disk Access to your terminal application.
+
+Make sure you've granted Full Disk Access to your terminal app and restarted it.
 
 ### No messages showing up
-The app filters for messages from 2025. If you're viewing before 2025 or have few 2025 messages, you may see limited data.
 
-### Charts not rendering
-Try refreshing the page. If the issue persists, check the browser console for errors.
+The app filters for messages from 2025. If you have few 2025 messages, you may see limited data.
+
+### Dependency install fails with peer conflict
+
+Run `npm run install:all` from the project root — this handles known peer dependency conflicts automatically. If you're installing in `client/` directly, the included `.npmrc` should resolve it. If not, run:
+
+```bash
+cd client
+npm install --legacy-peer-deps
+```

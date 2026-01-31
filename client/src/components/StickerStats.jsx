@@ -3,42 +3,22 @@ import {
   LineChart, Line, Legend,
   XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts'
+import { useApiData } from '../hooks/useApiData'
+import { getStickerUrl } from '../hooks/useStickerUrl'
 
 function StickerStats() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchStickers()
-  }, [])
-
-  const fetchStickers = async () => {
-    try {
-      const res = await fetch('/api/stickers')
-      const json = await res.json()
-      setData(json)
-    } catch (err) {
-      console.error('Error fetching stickers:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, loading } = useApiData('/api/stickers')
 
   const formatNumber = (num) => {
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
     return num?.toLocaleString() || '0'
   }
 
-  const stickerImageUrl = (filename) => {
-    if (!filename) return null
-    return `/api/sticker-image?path=${encodeURIComponent(filename)}`
-  }
-
   const StickerImage = ({ filename, transfer_name, size = 64 }) => {
     const [errored, setErrored] = useState(false)
     const [popover, setPopover] = useState(null)
     const imgRef = useRef(null)
-    const url = stickerImageUrl(filename)
+    const url = getStickerUrl(filename)
 
     useEffect(() => {
       if (!popover) return

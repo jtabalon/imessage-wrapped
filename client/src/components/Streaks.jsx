@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useApiData } from '../hooks/useApiData'
 
 const streakGradients = [
   ['#f97316', '#ef4444'], // orange-red (fire)
@@ -9,24 +9,7 @@ const streakGradients = [
 ]
 
 function Streaks() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchStreaks()
-  }, [])
-
-  const fetchStreaks = async () => {
-    try {
-      const res = await fetch('/api/streaks')
-      const json = await res.json()
-      setData(json)
-    } catch (err) {
-      console.error('Error fetching streaks:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, loading } = useApiData('/api/streaks')
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A'

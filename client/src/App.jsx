@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import Dashboard from './components/Dashboard'
+import { isStaticMode } from './hooks/useApiData'
 
 function App() {
-  const [isConnected, setIsConnected] = useState(null)
+  const [isConnected, setIsConnected] = useState(isStaticMode() ? true : null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (isStaticMode()) return
     checkConnection()
   }, [])
 

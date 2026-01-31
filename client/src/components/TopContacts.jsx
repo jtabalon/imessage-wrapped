@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { useApiData } from '../hooks/useApiData'
 
 const gradients = [
   ['#667eea', '#764ba2'],
@@ -15,24 +15,8 @@ const gradients = [
 ]
 
 function TopContacts() {
-  const [contacts, setContacts] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchContacts()
-  }, [])
-
-  const fetchContacts = async () => {
-    try {
-      const res = await fetch('/api/contacts')
-      const data = await res.json()
-      setContacts(data)
-    } catch (err) {
-      console.error('Error fetching contacts:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: contactsData, loading } = useApiData('/api/contacts')
+  const contacts = contactsData || []
 
   const formatNumber = (num) => {
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
