@@ -1,12 +1,8 @@
 import StoryCard from './StoryCard'
+import { formatNumber } from './storyUtils'
 
 function EmojiStoryCard({ emojis }) {
   if (!emojis) return null
-
-  const formatNumber = (num) => {
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
-    return num?.toLocaleString() || '0'
-  }
 
   const topEmojis = emojis.topEmojis || []
 

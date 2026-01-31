@@ -1,13 +1,8 @@
 import StoryCard from './StoryCard'
+import { formatNumber } from './storyUtils'
 
 function TitleStoryCard({ stats }) {
   if (!stats) return null
-
-  const formatNumber = (num) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
-    return num?.toLocaleString() || '0'
-  }
 
   return (
     <StoryCard>
