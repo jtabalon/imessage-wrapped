@@ -704,7 +704,7 @@ export function getWordFrequency() {
         .sort((a, b) => b.wordCount - a.wordCount)
         .slice(0, 3)
         .map(m => ({
-          text: m.text,
+          text: m.text.length > 200 ? m.text.slice(0, 200) + '...' : m.text,
           wordCount: m.wordCount,
           date: m.date ? toDateString(m.date) : null
         }))

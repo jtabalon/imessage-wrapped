@@ -17,7 +17,7 @@ const gradients = [
 ]
 
 function WordCloud() {
-  const { data, loading } = useApiData('/api/words')
+  const { data, loading, error } = useApiData('/api/words')
   const [selectedLengthContact, setSelectedLengthContact] = useState(null)
 
   const formatNumber = (num) => {
@@ -73,6 +73,18 @@ function WordCloud() {
       <div className="card">
         <h2 className="text-2xl font-bold text-white mb-6">Your Vocabulary</h2>
         <div className="h-96 loading-shimmer rounded-lg" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="card">
+        <h2 className="text-2xl font-bold text-white mb-6">Your Vocabulary</h2>
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-center">
+          <p className="text-red-400">Failed to load vocabulary data.</p>
+          <p className="text-white/40 text-sm mt-1">Try refreshing the page. If the issue persists, check that the server is running.</p>
+        </div>
       </div>
     )
   }
