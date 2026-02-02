@@ -31,6 +31,71 @@ const stopWords = new Set([
   'don', 'didn', 'won', 'wouldn', 'couldn', 'shouldn', 'isn', 'aren', 'wasn', 'weren', 'doesn', 'hasn', 'hadn', 'haven'
 ]);
 
+// Common texting abbreviations (used by textingStyle insight)
+const abbreviations = new Set([
+  'lol', 'lmao', 'idk', 'ngl', 'tbh', 'omg', 'bruh', 'hmu', 'wyd', 'btw',
+  'fyi', 'rn', 'pls', 'plz', 'bc', 'ur', 'smh', 'imo', 'imho', 'tho',
+  'nvm', 'irl', 'afk', 'brb', 'gtg', 'ttyl', 'ily', 'ilysm', 'ong', 'fr',
+  'icymi', 'tldr', 'jk', 'rofl', 'stfu', 'nah', 'yea', 'yep', 'ya', 'ye',
+  'ty', 'thx', 'tysm', 'np', 'yw', 'ofc', 'obvi', 'lowkey', 'highkey',
+  'deadass', 'bet', 'fam', 'bro', 'sis', 'dude', 'yall', 'gotta', 'gonna',
+  'wanna', 'kinda', 'sorta', 'tryna', 'boutta', 'finna', 'ion', 'ight',
+  'aight', 'lmk', 'dm', 'pm', 'haha', 'hahaha', 'omfg', 'wtf', 'wth',
+  'smth', 'sth', 'abt', 'w', 'u', 'r', 'k', 'y', 'n', 'b', 'msg', 'pic',
+  'def', 'prob', 'tho', 'doe', 'fomo', 'goat', 'sus', 'cap', 'nocap', 'slay'
+]);
+
+// Approximate English conversational frequency per million words (baseline for catchphrases)
+// Only includes words NOT in stopWords so we can compute overuse ratios.
+const englishFrequency = new Map([
+  ['love', 200], ['hate', 30], ['feel', 60], ['feeling', 40], ['life', 50],
+  ['world', 40], ['home', 50], ['food', 25], ['eat', 30], ['sleep', 20],
+  ['morning', 30], ['night', 40], ['tonight', 15], ['today', 60], ['tomorrow', 30],
+  ['yesterday', 15], ['weekend', 15], ['week', 40], ['month', 20], ['always', 40],
+  ['never', 40], ['forever', 10], ['literally', 30], ['basically', 15],
+  ['honestly', 20], ['seriously', 15], ['definitely', 20], ['absolutely', 15],
+  ['obviously', 10], ['apparently', 8], ['exactly', 20], ['completely', 12],
+  ['totally', 15], ['pretty', 30], ['quite', 15], ['super', 20], ['crazy', 20],
+  ['funny', 20], ['cool', 20], ['nice', 25], ['sweet', 15], ['cute', 15],
+  ['awesome', 15], ['amazing', 15], ['beautiful', 15], ['perfect', 20],
+  ['great', 40], ['best', 30], ['worst', 10], ['better', 30], ['worse', 8],
+  ['happy', 25], ['sad', 15], ['mad', 10], ['angry', 8], ['excited', 12],
+  ['scared', 8], ['tired', 15], ['sick', 12], ['sorry', 30], ['please', 30],
+  ['thanks', 40], ['thank', 35], ['welcome', 15], ['help', 30], ['need', 50],
+  ['keep', 25], ['stop', 20], ['start', 20], ['try', 30], ['trying', 25],
+  ['hope', 25], ['wish', 15], ['wait', 20], ['waiting', 12], ['watch', 15],
+  ['play', 20], ['read', 15], ['talk', 20], ['talking', 15], ['call', 25],
+  ['send', 15], ['told', 20], ['said', 35], ['asked', 15], ['friend', 20],
+  ['friends', 20], ['family', 15], ['baby', 15], ['girl', 15], ['guy', 15],
+  ['man', 25], ['woman', 10], ['kids', 12], ['people', 40], ['everyone', 20],
+  ['game', 20], ['movie', 12], ['music', 12], ['song', 10], ['book', 12],
+  ['show', 20], ['car', 15], ['phone', 15], ['school', 15], ['class', 15],
+  ['work', 40], ['job', 15], ['money', 20], ['pay', 15], ['buy', 15],
+  ['free', 15], ['late', 15], ['early', 10], ['soon', 15], ['ready', 15],
+  ['done', 25], ['fine', 20], ['real', 15], ['true', 15], ['wrong', 15],
+  ['bad', 25], ['hard', 20], ['easy', 12], ['long', 20], ['big', 15],
+  ['little', 25], ['old', 20], ['young', 8], ['next', 20], ['last', 25],
+  ['different', 12], ['same', 20], ['whole', 12], ['every', 20], ['own', 15],
+  ['place', 15], ['house', 15], ['room', 12], ['water', 12], ['eat', 20],
+  ['drink', 12], ['dinner', 10], ['lunch', 10], ['breakfast', 8], ['coffee', 8],
+  ['pizza', 5], ['chicken', 5], ['gonna', 30], ['gotta', 15], ['wanna', 15],
+  ['dude', 8], ['bro', 8], ['fam', 3], ['vibes', 3], ['vibe', 3],
+  ['chill', 5], ['sick', 8], ['fire', 5], ['lit', 3], ['bet', 5],
+  ['low', 10], ['high', 10], ['run', 15], ['walk', 10], ['drive', 10],
+  ['miss', 15], ['remember', 15], ['forget', 10], ['believe', 12],
+  ['understand', 12], ['guess', 12], ['mean', 20], ['matter', 10],
+  ['care', 15], ['worry', 10], ['mind', 15], ['point', 12], ['part', 15],
+  ['deal', 10], ['head', 10], ['hand', 10], ['face', 10], ['eye', 8],
+  ['heart', 10], ['god', 15], ['damn', 10], ['shit', 15], ['fuck', 12],
+  ['hell', 10], ['ass', 8], ['crap', 5], ['dumb', 5], ['stupid', 8],
+  ['weird', 8], ['random', 5], ['fun', 15], ['enjoy', 8], ['glad', 8],
+  ['favorite', 8], ['kind', 15], ['half', 10], ['couple', 8], ['either', 10],
+  ['unless', 8], ['perhaps', 5], ['whether', 5], ['towards', 5],
+  ['between', 10], ['along', 8], ['around', 15], ['through', 15],
+  ['together', 12], ['against', 8], ['without', 12], ['within', 5],
+  ['enough', 15], ['least', 10], ['less', 10], ['else', 15]
+]);
+
 // Detect iMessage tapback reactions (e.g. 'Loved "Hey!"', 'Laughed at an image')
 const reactionPrefixRegex = /^(Loved|Liked|Disliked|Laughed at|Emphasized|Questioned) ("|\u{201c}|an )/u;
 
@@ -403,17 +468,45 @@ export function getEmojiStats() {
   };
 }
 
-// Word frequency for word cloud
+// Word frequency for word cloud + vocabulary insights
 export function getWordFrequency() {
   const messages = getProcessedMessages();
 
+  // --- Existing accumulators ---
   const wordCount = {};
 
-  messages.forEach(msg => {
-    if (!msg.text || !msg.is_from_me) return; // Only count words YOU sent
-    if (reactionPrefixRegex.test(msg.text)) return; // Skip tapback reactions
+  // --- New accumulators for 5 insights ---
+  // 1: Vocabulary by contact (TF-IDF)
+  const wordsPerContact = {};   // { contactId: { word: count } }
+  // 2: Vocabulary evolution
+  const wordsByMonth = {};      // { monthKey: { word: count } }
+  // 3: Message length
+  const contactMessageLengths = {}; // { contactId: { totalWords, messageCount } }
+  const lengthBuckets = { '1-5': 0, '6-15': 0, '16-30': 0, '31+': 0 };
+  let totalMessageWords = 0;
+  let totalMessageCount = 0;
+  // 5: Texting style
+  const abbreviationCounts = {};
+  let abbreviationsUsed = 0;
+  let fullWordsUsed = 0;
+  let allCapsMessages = 0;
+  let totalExclamationMarks = 0;
 
-    // Clean and tokenize
+  // --- Single-pass data collection ---
+  messages.forEach(msg => {
+    if (!msg.text || !msg.is_from_me) return;
+    if (reactionPrefixRegex.test(msg.text)) return;
+
+    // For sent messages, contact_id is null (handle_id=0), so use chat_identifier.
+    // Skip group chats (chat...) for per-contact analysis since they mix recipients.
+    const chatId = msg.chat_identifier || '';
+    const isGroupChat = chatId.startsWith('chat');
+    const contactId = msg.contact_id || (isGroupChat ? null : chatId) || 'Unknown';
+    const monthKey = msg.date
+      ? `${msg.date.getFullYear()}-${String(msg.date.getMonth() + 1).padStart(2, '0')}`
+      : null;
+
+    // --- Standard tokenization (stop-word-filtered, length > 2) for insights 1/2/4 ---
     const words = msg.text
       .toLowerCase()
       .replace(/[^\w\s]/g, ' ')
@@ -422,19 +515,260 @@ export function getWordFrequency() {
 
     words.forEach(word => {
       wordCount[word] = (wordCount[word] || 0) + 1;
+
+      // 1: Per-contact word counts
+      if (!wordsPerContact[contactId]) wordsPerContact[contactId] = {};
+      wordsPerContact[contactId][word] = (wordsPerContact[contactId][word] || 0) + 1;
+
+      // 2: Per-month word counts
+      if (monthKey) {
+        if (!wordsByMonth[monthKey]) wordsByMonth[monthKey] = {};
+        wordsByMonth[monthKey][word] = (wordsByMonth[monthKey][word] || 0) + 1;
+      }
     });
+
+    // --- Raw word count for insight 3 (message length) ---
+    const rawWords = msg.text.trim().split(/\s+/).filter(w => w.length > 0);
+    const rawLen = rawWords.length;
+    totalMessageWords += rawLen;
+    totalMessageCount++;
+
+    if (!contactMessageLengths[contactId]) {
+      contactMessageLengths[contactId] = { totalWords: 0, messageCount: 0 };
+    }
+    contactMessageLengths[contactId].totalWords += rawLen;
+    contactMessageLengths[contactId].messageCount++;
+
+    if (rawLen <= 5) lengthBuckets['1-5']++;
+    else if (rawLen <= 15) lengthBuckets['6-15']++;
+    else if (rawLen <= 30) lengthBuckets['16-30']++;
+    else lengthBuckets['31+']++;
+
+    // --- Texting style tokenization (includes short words) for insight 5 ---
+    const allTokens = msg.text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length > 0 && !/^\d+$/.test(t));
+
+    allTokens.forEach(token => {
+      if (abbreviations.has(token)) {
+        abbreviationCounts[token] = (abbreviationCounts[token] || 0) + 1;
+        abbreviationsUsed++;
+      } else if (token.length > 1) {
+        fullWordsUsed++;
+      }
+    });
+
+    // All-caps detection (messages with 3+ words entirely in caps)
+    const originalWords = msg.text.trim().split(/\s+/).filter(w => w.length > 1 && /^[A-Z]+$/.test(w));
+    if (originalWords.length >= 3) allCapsMessages++;
+
+    // Exclamation marks
+    totalExclamationMarks += (msg.text.match(/!/g) || []).length;
   });
 
-  // Get top words for word cloud
+  // ============================================================
+  // Existing return data
+  // ============================================================
+  const totalWords = Object.values(wordCount).reduce((a, b) => a + b, 0);
+
   const wordCloud = Object.entries(wordCount)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 100)
     .map(([text, value]) => ({ text, value }));
 
+  // ============================================================
+  // 1: vocabularyByContact (TF-IDF)
+  // ============================================================
+  const numContacts = Object.keys(wordsPerContact).length;
+
+  // Build document-frequency map: how many contacts use each word
+  const docFrequency = {};
+  Object.values(wordsPerContact).forEach(wordMap => {
+    Object.keys(wordMap).forEach(word => {
+      docFrequency[word] = (docFrequency[word] || 0) + 1;
+    });
+  });
+
+  const vocabularyByContact = Object.entries(wordsPerContact)
+    .map(([contactId, wordMap]) => {
+      const name = getDisplayName(contactId);
+      const contactTotal = Object.values(wordMap).reduce((a, b) => a + b, 0);
+      return { contactId, name, totalWords: contactTotal, wordMap };
+    })
+    .filter(c => c.name && c.totalWords >= 30)
+    .sort((a, b) => b.totalWords - a.totalWords)
+    .slice(0, 8)
+    .map(({ contactId, name, totalWords: cTotal, wordMap }) => {
+      const distinctiveWords = Object.entries(wordMap)
+        .filter(([_, count]) => count >= 3)
+        .map(([word, count]) => {
+          const tf = count / cTotal;
+          const idf = Math.log(numContacts / (docFrequency[word] || 1));
+          return { word, score: Math.round(tf * idf * 10000) / 10000, count };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      return { name, contactId, totalWords: cTotal, distinctiveWords };
+    });
+
+  // ============================================================
+  // 2: vocabularyEvolution (monthly trends)
+  // ============================================================
+  const sortedMonths = Object.keys(wordsByMonth).sort();
+
+  const monthlyTrends = sortedMonths.map((month, idx) => {
+    const currWords = wordsByMonth[month];
+    const prevWords = idx > 0 ? wordsByMonth[sortedMonths[idx - 1]] : {};
+
+    const trendingUp = Object.entries(currWords)
+      .filter(([word, count]) => {
+        if (count < 5) return false;
+        const prev = prevWords[word] || 0;
+        return prev === 0 || count >= prev * 2;
+      })
+      .map(([word, count]) => ({ word, count, prevCount: prevWords[word] || 0 }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    const fadingAway = Object.entries(prevWords || {})
+      .filter(([word, prevCount]) => {
+        if (prevCount < 5) return false;
+        const curr = currWords[word] || 0;
+        return curr <= prevCount * 0.5;
+      })
+      .map(([word, prevCount]) => ({ word, count: currWords[word] || 0, prevCount }))
+      .sort((a, b) => b.prevCount - a.prevCount)
+      .slice(0, 3);
+
+    return { month, trendingUp, fadingAway };
+  });
+
+  // Tracked words: top 4 overall words with monthly breakdown
+  const top4Words = Object.entries(wordCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([word]) => word);
+
+  const trackedWords = top4Words.map(word => ({
+    word,
+    monthlyCounts: sortedMonths.map(month => ({
+      month,
+      count: wordsByMonth[month]?.[word] || 0
+    }))
+  }));
+
+  const vocabularyEvolution = {
+    months: monthlyTrends,
+    trackedWords
+  };
+
+  // ============================================================
+  // 3: messageLength
+  // ============================================================
+  const overallAvg = totalMessageCount > 0
+    ? Math.round((totalMessageWords / totalMessageCount) * 10) / 10
+    : 0;
+
+  const contactLengthEntries = Object.entries(contactMessageLengths)
+    .map(([contactId, data]) => ({
+      contactId,
+      name: getDisplayName(contactId),
+      avgWords: Math.round((data.totalWords / data.messageCount) * 10) / 10,
+      messageCount: data.messageCount
+    }))
+    .filter(c => c.name && c.messageCount >= 10);
+
+  const longestMessagesTo = [...contactLengthEntries]
+    .sort((a, b) => b.avgWords - a.avgWords)
+    .slice(0, 5);
+
+  const shortestMessagesTo = [...contactLengthEntries]
+    .sort((a, b) => a.avgWords - b.avgWords)
+    .slice(0, 5);
+
+  const lengthDistribution = [
+    { range: '1-5 words', count: lengthBuckets['1-5'] },
+    { range: '6-15 words', count: lengthBuckets['6-15'] },
+    { range: '16-30 words', count: lengthBuckets['16-30'] },
+    { range: '31+ words', count: lengthBuckets['31+'] }
+  ];
+
+  const messageLength = {
+    overallAvg,
+    totalMessages: totalMessageCount,
+    longestMessagesTo,
+    shortestMessagesTo,
+    lengthDistribution
+  };
+
+  // ============================================================
+  // 4: catchphrases (signature words vs English baseline)
+  // ============================================================
+  let catchphrases = [];
+  if (totalWords >= 1000) {
+    const userFreqPerMillion = (count) => (count / totalWords) * 1_000_000;
+
+    catchphrases = Object.entries(wordCount)
+      .filter(([word, count]) => count >= 10 && englishFrequency.has(word))
+      .map(([word, count]) => {
+        const typical = englishFrequency.get(word);
+        const userFreq = userFreqPerMillion(count);
+        const overuseRatio = Math.round((userFreq / typical) * 10) / 10;
+        return { word, count, typicalFrequency: typical, overuseRatio };
+      })
+      .filter(entry => entry.overuseRatio > 1)
+      .sort((a, b) => b.overuseRatio - a.overuseRatio)
+      .slice(0, 10);
+  }
+
+  // ============================================================
+  // 5: textingStyle (formality / abbreviation analysis)
+  // ============================================================
+  const totalStyleWords = abbreviationsUsed + fullWordsUsed;
+  const abbrRatio = totalStyleWords > 0 ? abbreviationsUsed / totalStyleWords : 0;
+  // Formality: 100 = all full words, 0 = all abbreviations
+  const formalityScore = Math.round((1 - abbrRatio) * 100);
+
+  let textingLabel;
+  if (formalityScore >= 85) textingLabel = 'Formal Writer';
+  else if (formalityScore >= 65) textingLabel = 'Balanced';
+  else if (formalityScore >= 40) textingLabel = 'Casual Texter';
+  else textingLabel = 'Abbreviation Enthusiast';
+
+  const topAbbreviations = Object.entries(abbreviationCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([word, count]) => ({ word, count }));
+
+  const avgExclamationMarks = totalMessageCount > 0
+    ? Math.round((totalExclamationMarks / totalMessageCount) * 100) / 100
+    : 0;
+
+  const textingStyle = totalStyleWords >= 100 ? {
+    formalityScore,
+    abbreviationsUsed,
+    fullWordsUsed,
+    topAbbreviations,
+    label: textingLabel,
+    allCapsMessages,
+    avgExclamationMarks
+  } : null;
+
+  // ============================================================
+  // Return combined shape
+  // ============================================================
   return {
-    totalWords: Object.values(wordCount).reduce((a, b) => a + b, 0),
+    totalWords,
     uniqueWords: Object.keys(wordCount).length,
-    wordCloud
+    wordCloud,
+    vocabularyByContact,
+    vocabularyEvolution,
+    messageLength,
+    catchphrases,
+    textingStyle
   };
 }
 
