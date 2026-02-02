@@ -16,21 +16,37 @@ const gradients = [
   ['#fa709a', '#fee140'],
 ]
 
+function formatNumber(num) {
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+  return num?.toLocaleString() || '0'
+}
+
+function formatMonth(monthStr) {
+  if (!monthStr) return ''
+  const [y, m] = monthStr.split('-')
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `${months[parseInt(m, 10) - 1]} '${y.slice(2)}`
+}
+
+function CustomTooltip({ active, payload, label }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-gray-900/95 backdrop-blur p-3 rounded-lg border border-white/10">
+        <p className="text-white font-semibold text-sm">{label}</p>
+        {payload.map((entry, i) => (
+          <p key={i} style={{ color: entry.color }} className="text-sm">
+            {entry.name}: {formatNumber(entry.value)}
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 function WordCloud() {
   const { data, loading, error } = useApiData('/api/words')
   const [selectedLengthContact, setSelectedLengthContact] = useState(null)
-
-  const formatNumber = (num) => {
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
-    return num?.toLocaleString() || '0'
-  }
-
-  const formatMonth = (monthStr) => {
-    if (!monthStr) return ''
-    const [y, m] = monthStr.split('-')
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    return `${months[parseInt(m, 10) - 1]} '${y.slice(2)}`
-  }
 
   const wordCloudOptions = useMemo(() => ({
     colors: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#fa709a'],
@@ -51,22 +67,6 @@ function WordCloud() {
   const callbacks = useMemo(() => ({
     getWordTooltip: word => `"${word.text}" - used ${formatNumber(word.value)} times`,
   }), [])
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-gray-900/95 backdrop-blur p-3 rounded-lg border border-white/10">
-          <p className="text-white font-semibold text-sm">{label}</p>
-          {payload.map((entry, i) => (
-            <p key={i} style={{ color: entry.color }} className="text-sm">
-              {entry.name}: {formatNumber(entry.value)}
-            </p>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
 
   if (loading) {
     return (

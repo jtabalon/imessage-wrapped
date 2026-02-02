@@ -67,18 +67,18 @@ const englishFrequency = new Map([
   ['play', 20], ['read', 15], ['talk', 20], ['talking', 15], ['call', 25],
   ['send', 15], ['told', 20], ['said', 35], ['asked', 15], ['friend', 20],
   ['friends', 20], ['family', 15], ['baby', 15], ['girl', 15], ['guy', 15],
-  ['man', 25], ['woman', 10], ['kids', 12], ['people', 40], ['everyone', 20],
+  ['man', 25], ['woman', 10], ['kids', 12],
   ['game', 20], ['movie', 12], ['music', 12], ['song', 10], ['book', 12],
   ['show', 20], ['car', 15], ['phone', 15], ['school', 15], ['class', 15],
-  ['work', 40], ['job', 15], ['money', 20], ['pay', 15], ['buy', 15],
+  ['job', 15], ['money', 20], ['pay', 15], ['buy', 15],
   ['free', 15], ['late', 15], ['early', 10], ['soon', 15], ['ready', 15],
   ['done', 25], ['fine', 20], ['real', 15], ['true', 15], ['wrong', 15],
   ['bad', 25], ['hard', 20], ['easy', 12], ['long', 20], ['big', 15],
   ['little', 25], ['old', 20], ['young', 8], ['next', 20], ['last', 25],
   ['different', 12], ['same', 20], ['whole', 12], ['every', 20], ['own', 15],
-  ['place', 15], ['house', 15], ['room', 12], ['water', 12], ['eat', 20],
+  ['place', 15], ['house', 15], ['room', 12], ['water', 12],
   ['drink', 12], ['dinner', 10], ['lunch', 10], ['breakfast', 8], ['coffee', 8],
-  ['pizza', 5], ['chicken', 5], ['gonna', 30], ['gotta', 15], ['wanna', 15],
+  ['pizza', 5], ['chicken', 5],
   ['dude', 8], ['bro', 8], ['fam', 3], ['vibes', 3], ['vibe', 3],
   ['chill', 5], ['sick', 8], ['fire', 5], ['lit', 3], ['bet', 5],
   ['low', 10], ['high', 10], ['run', 15], ['walk', 10], ['drive', 10],
@@ -595,192 +595,216 @@ export function getWordFrequency() {
   // ============================================================
   // 1: vocabularyByContact (TF-IDF)
   // ============================================================
-  const numContacts = Object.keys(wordsPerContact).length;
+  let vocabularyByContact = [];
+  try {
+    const numContacts = Object.keys(wordsPerContact).length;
 
-  // Build document-frequency map: how many contacts use each word
-  const docFrequency = {};
-  Object.values(wordsPerContact).forEach(wordMap => {
-    Object.keys(wordMap).forEach(word => {
-      docFrequency[word] = (docFrequency[word] || 0) + 1;
+    // Build document-frequency map: how many contacts use each word
+    const docFrequency = {};
+    Object.values(wordsPerContact).forEach(wordMap => {
+      Object.keys(wordMap).forEach(word => {
+        docFrequency[word] = (docFrequency[word] || 0) + 1;
+      });
     });
-  });
 
-  const vocabularyByContact = Object.entries(wordsPerContact)
-    .map(([contactId, wordMap]) => {
-      const name = getDisplayName(contactId);
-      const contactTotal = Object.values(wordMap).reduce((a, b) => a + b, 0);
-      return { contactId, name, totalWords: contactTotal, wordMap };
-    })
-    .filter(c => c.name && c.totalWords >= 30)
-    .sort((a, b) => b.totalWords - a.totalWords)
-    .slice(0, 8)
-    .map(({ contactId, name, totalWords: cTotal, wordMap }) => {
-      const distinctiveWords = Object.entries(wordMap)
-        .filter(([_, count]) => count >= 3)
-        .map(([word, count]) => {
-          const tf = count / cTotal;
-          const idf = Math.log(numContacts / (docFrequency[word] || 1));
-          return { word, score: Math.round(tf * idf * 10000) / 10000, count };
-        })
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
+    vocabularyByContact = Object.entries(wordsPerContact)
+      .map(([contactId, wordMap]) => {
+        const name = getDisplayName(contactId);
+        const contactTotal = Object.values(wordMap).reduce((a, b) => a + b, 0);
+        return { contactId, name, totalWords: contactTotal, wordMap };
+      })
+      .filter(c => c.name && c.totalWords >= 30)
+      .sort((a, b) => b.totalWords - a.totalWords)
+      .slice(0, 8)
+      .map(({ contactId, name, totalWords: cTotal, wordMap }) => {
+        const distinctiveWords = Object.entries(wordMap)
+          .filter(([_, count]) => count >= 3)
+          .map(([word, count]) => {
+            const tf = count / cTotal;
+            const idf = Math.log(numContacts / (docFrequency[word] || 1));
+            return { word, score: Math.round(tf * idf * 10000) / 10000, count };
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5);
 
-      return { name, contactId, totalWords: cTotal, distinctiveWords };
-    });
+        return { name, contactId, totalWords: cTotal, distinctiveWords };
+      });
+  } catch (err) {
+    console.error('Error computing vocabularyByContact:', err);
+  }
 
   // ============================================================
   // 2: vocabularyEvolution (monthly trends)
   // ============================================================
-  const sortedMonths = Object.keys(wordsByMonth).sort();
+  let vocabularyEvolution = null;
+  try {
+    const sortedMonths = Object.keys(wordsByMonth).sort();
 
-  const monthlyTrends = sortedMonths.map((month, idx) => {
-    const currWords = wordsByMonth[month];
-    const prevWords = idx > 0 ? wordsByMonth[sortedMonths[idx - 1]] : {};
+    const monthlyTrends = sortedMonths.map((month, idx) => {
+      const currWords = wordsByMonth[month];
+      const prevWords = idx > 0 ? wordsByMonth[sortedMonths[idx - 1]] : {};
 
-    const trendingUp = Object.entries(currWords)
-      .filter(([word, count]) => {
-        if (count < 5) return false;
-        const prev = prevWords[word] || 0;
-        return prev === 0 || count >= prev * 2;
-      })
-      .map(([word, count]) => ({ word, count, prevCount: prevWords[word] || 0 }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
+      const trendingUp = Object.entries(currWords)
+        .filter(([word, count]) => {
+          if (count < 5) return false;
+          const prev = prevWords[word] || 0;
+          return prev === 0 || count >= prev * 2;
+        })
+        .map(([word, count]) => ({ word, count, prevCount: prevWords[word] || 0 }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
 
-    const fadingAway = Object.entries(prevWords || {})
-      .filter(([word, prevCount]) => {
-        if (prevCount < 5) return false;
-        const curr = currWords[word] || 0;
-        return curr <= prevCount * 0.5;
-      })
-      .map(([word, prevCount]) => ({ word, count: currWords[word] || 0, prevCount }))
-      .sort((a, b) => b.prevCount - a.prevCount)
-      .slice(0, 3);
+      const fadingAway = Object.entries(prevWords || {})
+        .filter(([word, prevCount]) => {
+          if (prevCount < 5) return false;
+          const curr = currWords[word] || 0;
+          return curr <= prevCount * 0.5;
+        })
+        .map(([word, prevCount]) => ({ word, count: currWords[word] || 0, prevCount }))
+        .sort((a, b) => b.prevCount - a.prevCount)
+        .slice(0, 3);
 
-    return { month, trendingUp, fadingAway };
-  });
+      return { month, trendingUp, fadingAway };
+    });
 
-  // Tracked words: top 4 overall words with monthly breakdown
-  const top4Words = Object.entries(wordCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([word]) => word);
+    // Tracked words: top 4 overall words with monthly breakdown
+    const top4Words = Object.entries(wordCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([word]) => word);
 
-  const trackedWords = top4Words.map(word => ({
-    word,
-    monthlyCounts: sortedMonths.map(month => ({
-      month,
-      count: wordsByMonth[month]?.[word] || 0
-    }))
-  }));
+    const trackedWords = top4Words.map(word => ({
+      word,
+      monthlyCounts: sortedMonths.map(month => ({
+        month,
+        count: wordsByMonth[month]?.[word] || 0
+      }))
+    }));
 
-  const vocabularyEvolution = {
-    months: monthlyTrends,
-    trackedWords
-  };
+    vocabularyEvolution = {
+      months: monthlyTrends,
+      trackedWords
+    };
+  } catch (err) {
+    console.error('Error computing vocabularyEvolution:', err);
+  }
 
   // ============================================================
   // 3: messageLength
   // ============================================================
-  const overallAvg = totalMessageCount > 0
-    ? Math.round((totalMessageWords / totalMessageCount) * 10) / 10
-    : 0;
+  let messageLength = null;
+  try {
+    const overallAvg = totalMessageCount > 0
+      ? Math.round((totalMessageWords / totalMessageCount) * 10) / 10
+      : 0;
 
-  const contactLengthEntries = Object.entries(contactMessageLengths)
-    .map(([contactId, data]) => ({
-      contactId,
-      name: getDisplayName(contactId),
-      avgWords: Math.round((data.totalWords / data.messageCount) * 10) / 10,
-      messageCount: data.messageCount
-    }))
-    .filter(c => c.name && c.messageCount >= 10);
+    const contactLengthEntries = Object.entries(contactMessageLengths)
+      .map(([contactId, data]) => ({
+        contactId,
+        name: getDisplayName(contactId),
+        avgWords: Math.round((data.totalWords / data.messageCount) * 10) / 10,
+        messageCount: data.messageCount
+      }))
+      .filter(c => c.name && c.messageCount >= 10);
 
-  const longestMessagesTo = [...contactLengthEntries]
-    .sort((a, b) => b.avgWords - a.avgWords)
-    .slice(0, 5)
-    .map(c => ({
-      ...c,
-      topMessages: (topMessagesByContact[c.contactId] || [])
-        .sort((a, b) => b.wordCount - a.wordCount)
-        .slice(0, 3)
-        .map(m => ({
-          text: m.text.length > 200 ? m.text.slice(0, 200) + '...' : m.text,
-          wordCount: m.wordCount,
-          date: m.date ? toDateString(m.date) : null
-        }))
-    }));
+    const longestMessagesTo = [...contactLengthEntries]
+      .sort((a, b) => b.avgWords - a.avgWords)
+      .slice(0, 5)
+      .map(c => ({
+        ...c,
+        topMessages: (topMessagesByContact[c.contactId] || [])
+          .sort((a, b) => b.wordCount - a.wordCount)
+          .slice(0, 3)
+          .map(m => ({
+            text: m.text.length > 200 ? m.text.slice(0, 200) + '...' : m.text,
+            wordCount: m.wordCount,
+            date: m.date ? toDateString(m.date) : null
+          }))
+      }));
 
-  const shortestMessagesTo = [...contactLengthEntries]
-    .sort((a, b) => a.avgWords - b.avgWords)
-    .slice(0, 5);
+    const shortestMessagesTo = [...contactLengthEntries]
+      .sort((a, b) => a.avgWords - b.avgWords)
+      .slice(0, 5);
 
-  const lengthDistribution = [
-    { range: '1-5 words', count: lengthBuckets['1-5'] },
-    { range: '6-15 words', count: lengthBuckets['6-15'] },
-    { range: '16-30 words', count: lengthBuckets['16-30'] },
-    { range: '31+ words', count: lengthBuckets['31+'] }
-  ];
+    const lengthDistribution = [
+      { range: '1-5 words', count: lengthBuckets['1-5'] },
+      { range: '6-15 words', count: lengthBuckets['6-15'] },
+      { range: '16-30 words', count: lengthBuckets['16-30'] },
+      { range: '31+ words', count: lengthBuckets['31+'] }
+    ];
 
-  const messageLength = {
-    overallAvg,
-    totalMessages: totalMessageCount,
-    longestMessagesTo,
-    shortestMessagesTo,
-    lengthDistribution
-  };
+    messageLength = {
+      overallAvg,
+      totalMessages: totalMessageCount,
+      longestMessagesTo,
+      shortestMessagesTo,
+      lengthDistribution
+    };
+  } catch (err) {
+    console.error('Error computing messageLength:', err);
+  }
 
   // ============================================================
   // 4: catchphrases (signature words vs English baseline)
   // ============================================================
   let catchphrases = [];
-  if (totalWords >= 1000) {
-    const userFreqPerMillion = (count) => (count / totalWords) * 1_000_000;
+  try {
+    if (totalWords >= 1000) {
+      const userFreqPerMillion = (count) => (count / totalWords) * 1_000_000;
 
-    catchphrases = Object.entries(wordCount)
-      .filter(([word, count]) => count >= 10 && englishFrequency.has(word))
-      .map(([word, count]) => {
-        const typical = englishFrequency.get(word);
-        const userFreq = userFreqPerMillion(count);
-        const overuseRatio = Math.round((userFreq / typical) * 10) / 10;
-        return { word, count, typicalFrequency: typical, overuseRatio };
-      })
-      .filter(entry => entry.overuseRatio > 1)
-      .sort((a, b) => b.overuseRatio - a.overuseRatio)
-      .slice(0, 10);
+      catchphrases = Object.entries(wordCount)
+        .filter(([word, count]) => count >= 10 && englishFrequency.has(word))
+        .map(([word, count]) => {
+          const typical = englishFrequency.get(word);
+          const userFreq = userFreqPerMillion(count);
+          const overuseRatio = Math.round((userFreq / typical) * 10) / 10;
+          return { word, count, typicalFrequency: typical, overuseRatio };
+        })
+        .filter(entry => entry.overuseRatio > 1)
+        .sort((a, b) => b.overuseRatio - a.overuseRatio)
+        .slice(0, 10);
+    }
+  } catch (err) {
+    console.error('Error computing catchphrases:', err);
   }
 
   // ============================================================
   // 5: textingStyle (formality / abbreviation analysis)
   // ============================================================
-  const totalStyleWords = abbreviationsUsed + fullWordsUsed;
-  const abbrRatio = totalStyleWords > 0 ? abbreviationsUsed / totalStyleWords : 0;
-  // Formality: 100 = all full words, 0 = all abbreviations
-  const formalityScore = Math.round((1 - abbrRatio) * 100);
+  let textingStyle = null;
+  try {
+    const totalStyleWords = abbreviationsUsed + fullWordsUsed;
+    const abbrRatio = totalStyleWords > 0 ? abbreviationsUsed / totalStyleWords : 0;
+    // Formality: 100 = all full words, 0 = all abbreviations
+    const formalityScore = Math.round((1 - abbrRatio) * 100);
 
-  let textingLabel;
-  if (formalityScore >= 85) textingLabel = 'Formal Writer';
-  else if (formalityScore >= 65) textingLabel = 'Balanced';
-  else if (formalityScore >= 40) textingLabel = 'Casual Texter';
-  else textingLabel = 'Abbreviation Enthusiast';
+    let textingLabel;
+    if (formalityScore >= 85) textingLabel = 'Formal Writer';
+    else if (formalityScore >= 65) textingLabel = 'Balanced';
+    else if (formalityScore >= 40) textingLabel = 'Casual Texter';
+    else textingLabel = 'Abbreviation Enthusiast';
 
-  const topAbbreviations = Object.entries(abbreviationCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([word, count]) => ({ word, count }));
+    const topAbbreviations = Object.entries(abbreviationCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word, count]) => ({ word, count }));
 
-  const avgExclamationMarks = totalMessageCount > 0
-    ? Math.round((totalExclamationMarks / totalMessageCount) * 100) / 100
-    : 0;
+    const avgExclamationMarks = totalMessageCount > 0
+      ? Math.round((totalExclamationMarks / totalMessageCount) * 100) / 100
+      : 0;
 
-  const textingStyle = totalStyleWords >= 100 ? {
-    formalityScore,
-    abbreviationsUsed,
-    fullWordsUsed,
-    topAbbreviations,
-    label: textingLabel,
-    allCapsMessages,
-    avgExclamationMarks
-  } : null;
+    textingStyle = totalStyleWords >= 100 ? {
+      formalityScore,
+      abbreviationsUsed,
+      fullWordsUsed,
+      topAbbreviations,
+      label: textingLabel,
+      allCapsMessages,
+      avgExclamationMarks
+    } : null;
+  } catch (err) {
+    console.error('Error computing textingStyle:', err);
+  }
 
   // ============================================================
   // Return combined shape
