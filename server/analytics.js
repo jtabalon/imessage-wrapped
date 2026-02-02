@@ -26,7 +26,9 @@ const stopWords = new Set([
   'let', 'lets', 'maybe', 'actually', 'probably', 'already', 'right', 'sure',
   'though', 'thought', 'something', 'anything', 'everything', 'nothing',
   'someone', 'anyone', 'everyone', 'noone', 'nobody', 'everybody', 'somebody',
-  'www', 'com', 'http', 'https', 'org', 'net', 'edu', 'gov', 'html', 'htm'
+  'www', 'com', 'http', 'https', 'org', 'net', 'edu', 'gov', 'html', 'htm',
+  // Contraction fragments left after apostrophe stripping (don't → don, didn't → didn, etc.)
+  'don', 'didn', 'won', 'wouldn', 'couldn', 'shouldn', 'isn', 'aren', 'wasn', 'weren', 'doesn', 'hasn', 'hadn', 'haven'
 ]);
 
 // Detect iMessage tapback reactions (e.g. 'Loved "Hey!"', 'Laughed at an image')
