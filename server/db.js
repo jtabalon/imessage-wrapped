@@ -173,6 +173,17 @@ export function getContactName(identifier) {
   return null;
 }
 
+// Check if an identifier is human-readable (phone number or email)
+// rather than an opaque iMessage hash like "chat574849585758495857"
+export function isDisplayableIdentifier(identifier) {
+  if (!identifier) return false;
+  if (getContactName(identifier)) return true;
+  const digits = identifier.replace(/[\s\-\(\)\.]/g, '');
+  if (/^\+?\d{7,15}$/.test(digits)) return true;
+  if (identifier.includes('@')) return true;
+  return false;
+}
+
 // Helper to convert Apple's CoreData timestamp to JS Date
 // Apple stores dates as seconds since 2001-01-01
 export function appleTimestampToDate(timestamp) {

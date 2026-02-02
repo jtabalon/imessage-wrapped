@@ -1,4 +1,4 @@
-import { getMessages2025, appleTimestampToDate, getHandles, getDatabase, getContactName, getStickerMessages, getGroupChatMembers } from './db.js';
+import { getMessages2025, appleTimestampToDate, getHandles, getDatabase, getContactName, isDisplayableIdentifier, getStickerMessages, getGroupChatMembers } from './db.js';
 
 // Helper: format a Date as YYYY-MM-DD in local time
 function toDateString(d) {
@@ -51,6 +51,15 @@ function getProcessedMessages() {
 // Clear cache (useful if data needs refreshing)
 export function clearCache() {
   messagesCache = null;
+}
+
+// Centralized display-name resolver: returns null for opaque/hash identifiers
+// so they can be filtered out downstream instead of leaking into the UI.
+function getDisplayName(identifier) {
+  const name = getContactName(identifier);
+  if (name) return name;
+  if (isDisplayableIdentifier(identifier)) return identifier;
+  return null;
 }
 
 // Overall statistics
@@ -139,14 +148,14 @@ export function getTopContacts(limit = 10) {
     contactStats[contactId].lastMessage = msg.date;
   });
 
-  // Sort by total and get top contacts (exclude Unknown)
+  // Sort by total and get top contacts (exclude Unknown and hash-like identifiers)
   const topContacts = Object.values(contactStats)
-    .filter(c => c.id !== 'Unknown')
+    .filter(c => c.id !== 'Unknown' && getDisplayName(c.id))
     .sort((a, b) => b.total - a.total)
     .slice(0, limit)
     .map(contact => ({
       ...contact,
-      name: getContactName(contact.id) || contact.id,
+      name: getDisplayName(contact.id),
       ratio: contact.sent / (contact.received || 1),
       personality: getMessagingPersonality(contact.sent, contact.received)
     }));
@@ -263,7 +272,7 @@ export function getResponseTimes() {
     if (myResponseTimes.length > 0 || theirResponseTimes.length > 0) {
       contactResponseTimes[contactId] = {
         id: contactId,
-        name: getContactName(contactId) || contactId,
+        name: getDisplayName(contactId),
         myAvgResponse: myResponseTimes.length > 0
           ? myResponseTimes.reduce((a, b) => a + b, 0) / myResponseTimes.length
           : null,
@@ -276,7 +285,7 @@ export function getResponseTimes() {
   });
 
   const contacts = Object.values(contactResponseTimes)
-    .filter(c => c.sampleSize >= 10); // Only include contacts with enough data
+    .filter(c => c.sampleSize >= 10 && c.name); // Only include contacts with enough data and displayable names
 
   // Overall averages
   const allMyResponses = contacts.filter(c => c.myAvgResponse !== null);
@@ -497,10 +506,11 @@ export function getSentimentAnalysis() {
     .filter(([_, data]) => data.total >= 20)
     .map(([contactId, data]) => ({
       contactId,
-      name: getContactName(contactId) || contactId,
+      name: getDisplayName(contactId),
       positivityScore: ((data.positive - data.negative) / data.total * 100).toFixed(1),
       ...data
     }))
+    .filter(c => c.name)
     .sort((a, b) => b.positivityScore - a.positivityScore);
 
   // Monthly trend
@@ -574,7 +584,7 @@ export function getStickerStats() {
       .slice(0, limit)
       .map(({ contactCounts, ...rest }) => {
         const topContact = Object.entries(contactCounts).sort((a, b) => b[1] - a[1])[0];
-        return { ...rest, topContact: topContact ? (getContactName(topContact[0]) || topContact[0]) : null };
+        return { ...rest, topContact: topContact ? (getDisplayName(topContact[0]) || null) : null };
       });
   }
 
@@ -594,11 +604,11 @@ export function getStickerStats() {
         const top = Object.values(stickerMap).sort((a, b) => b.count - a.count)[0];
         return {
           contactId,
-          name: getContactName(contactId) || contactId,
+          name: getDisplayName(contactId),
           favoriteSticker: top
         };
       })
-      .filter(c => c.favoriteSticker)
+      .filter(c => c.favoriteSticker && c.name)
       .sort((a, b) => b.favoriteSticker.count - a.favoriteSticker.count)
       .slice(0, 5);
   }
@@ -683,7 +693,8 @@ export function getStreakStats() {
 
     if (mutualDays.length === 0) return;
 
-    const name = getContactName(contactId) || contactId;
+    const name = getDisplayName(contactId);
+    if (!name) return; // skip hash-like identifiers
 
     // Walk through mutual days finding consecutive runs
     let streakStart = mutualDays[0];
@@ -878,10 +889,13 @@ export function getGroupChatStats() {
   Object.entries(chatMembersMap).forEach(([chatId, info]) => {
     if (!info.chatName) {
       const names = [...info.members]
-        .map(hid => getContactName(hid) || hid)
+        .map(hid => getDisplayName(hid))
+        .filter(Boolean)
         .map(n => n.split(' ')[0]) // first name only
         .slice(0, 4);
-      info.chatName = names.join(', ') + (info.members.size > 4 ? `, +${info.members.size - 4}` : '');
+      if (names.length > 0) {
+        info.chatName = names.join(', ') + (info.members.size > 4 ? `, +${info.members.size - 4}` : '');
+      }
     }
   });
 
@@ -895,7 +909,7 @@ export function getGroupChatStats() {
     if (!chatStats[chatId]) {
       chatStats[chatId] = {
         chatIdentifier: chatId,
-        chatName: chatMembersMap[chatId]?.chatName || msg.chat_name || chatId,
+        chatName: chatMembersMap[chatId]?.chatName || msg.chat_name || null,
         totalMessages: 0,
         myMessages: 0,
         memberCounts: {},
@@ -956,8 +970,9 @@ export function getGroupChatStats() {
     }
   });
 
-  // Step 3: Sort by total messages
+  // Step 3: Sort by total messages (exclude chats with no displayable name)
   const sorted = Object.values(chatStats)
+    .filter(s => s.chatName)
     .sort((a, b) => b.totalMessages - a.totalMessages);
   const top10 = sorted.slice(0, 10);
   const top5 = sorted.slice(0, 10);
@@ -974,13 +989,14 @@ export function getGroupChatStats() {
   }));
 
   // Step 5: Build personality profiles for top 10
-  const resolveName = (hid) => hid === '__me__' ? 'You' : (getContactName(hid) || hid);
+  const resolveName = (hid) => hid === '__me__' ? 'You' : (getDisplayName(hid) || null);
 
   const personalities = {};
   top10.forEach(stat => {
     const entries = Object.entries(stat.memberCounts)
       .filter(([hid]) => hid !== 'Unknown')
       .map(([hid, count]) => ({ handleId: hid, name: resolveName(hid), count }))
+      .filter(e => e.name)
       .sort((a, b) => b.count - a.count);
 
     const mostTalkative = entries[0] || null;
@@ -1025,6 +1041,7 @@ export function getGroupChatStats() {
     const memberDistribution = Object.entries(stat.memberCounts)
       .filter(([hid]) => hid !== 'Unknown')
       .map(([hid, count]) => ({ name: resolveName(hid), count }))
+      .filter(e => e.name)
       .sort((a, b) => b.count - a.count);
 
     const monthlyActivity = Object.entries(stat.monthlyCounts)
