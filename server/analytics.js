@@ -485,6 +485,8 @@ export function getWordFrequency() {
   const lengthBuckets = { '1-5': 0, '6-15': 0, '16-30': 0, '31+': 0 };
   let totalMessageWords = 0;
   let totalMessageCount = 0;
+  // Top messages per contact (for clickable bar chart detail)
+  const topMessagesByContact = {}; // { contactId: [{ text, wordCount, date }] }
   // 5: Texting style
   const abbreviationCounts = {};
   let abbreviationsUsed = 0;
@@ -543,6 +545,18 @@ export function getWordFrequency() {
     else if (rawLen <= 15) lengthBuckets['6-15']++;
     else if (rawLen <= 30) lengthBuckets['16-30']++;
     else lengthBuckets['31+']++;
+
+    // Collect top 3 longest messages per contact (for clickable detail)
+    if (contactId !== 'Unknown' && rawLen >= 10) {
+      if (!topMessagesByContact[contactId]) topMessagesByContact[contactId] = [];
+      const arr = topMessagesByContact[contactId];
+      arr.push({ text: msg.text, wordCount: rawLen, date: msg.date });
+      // Keep only top 3 by word count to bound memory
+      if (arr.length > 3) {
+        arr.sort((a, b) => b.wordCount - a.wordCount);
+        arr.length = 3;
+      }
+    }
 
     // --- Texting style tokenization (includes short words) for insight 5 ---
     const allTokens = msg.text
@@ -683,7 +697,18 @@ export function getWordFrequency() {
 
   const longestMessagesTo = [...contactLengthEntries]
     .sort((a, b) => b.avgWords - a.avgWords)
-    .slice(0, 5);
+    .slice(0, 5)
+    .map(c => ({
+      ...c,
+      topMessages: (topMessagesByContact[c.contactId] || [])
+        .sort((a, b) => b.wordCount - a.wordCount)
+        .slice(0, 3)
+        .map(m => ({
+          text: m.text,
+          wordCount: m.wordCount,
+          date: m.date ? toDateString(m.date) : null
+        }))
+    }));
 
   const shortestMessagesTo = [...contactLengthEntries]
     .sort((a, b) => a.avgWords - b.avgWords)

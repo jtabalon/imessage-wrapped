@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import ReactWordcloud from 'react-wordcloud'
 import { useApiData } from '../hooks/useApiData'
 import {
@@ -18,6 +18,7 @@ const gradients = [
 
 function WordCloud() {
   const { data, loading } = useApiData('/api/words')
+  const [selectedLengthContact, setSelectedLengthContact] = useState(null)
 
   const formatNumber = (num) => {
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
@@ -162,35 +163,80 @@ function WordCloud() {
           </div>
 
           {/* Longest messages bar chart */}
-          {messageLength.longestMessagesTo?.length > 0 && (
-            <div className="mb-6">
-              <p className="text-white/60 text-sm mb-3">Longest messages to</p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={messageLength.longestMessagesTo}
-                    layout="vertical"
-                    margin={{ left: 80, right: 20, top: 5, bottom: 5 }}
-                  >
-                    <XAxis type="number" stroke="rgba(255,255,255,0.3)" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      stroke="rgba(255,255,255,0.3)"
-                      tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
-                      width={75}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="avgWords" name="Avg words" radius={[0, 4, 4, 0]}>
-                      {messageLength.longestMessagesTo.map((_, i) => (
-                        <Cell key={i} fill={gradients[i % gradients.length][0]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+          {messageLength.longestMessagesTo?.length > 0 && (() => {
+            const selectedContact = selectedLengthContact
+              ? messageLength.longestMessagesTo.find(c => c.contactId === selectedLengthContact)
+              : null
+            return (
+              <div className="mb-6">
+                <p className="text-white/60 text-sm mb-1">Longest messages to</p>
+                <p className="text-white/40 text-xs mb-3">Click a bar to see messages</p>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={messageLength.longestMessagesTo}
+                      layout="vertical"
+                      margin={{ left: 80, right: 20, top: 5, bottom: 5 }}
+                    >
+                      <XAxis type="number" stroke="rgba(255,255,255,0.3)" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        stroke="rgba(255,255,255,0.3)"
+                        tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
+                        width={75}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="avgWords" name="Avg words" radius={[0, 4, 4, 0]} className="cursor-pointer">
+                        {messageLength.longestMessagesTo.map((entry, i) => (
+                          <Cell
+                            key={i}
+                            fill={selectedLengthContact === entry.contactId
+                              ? gradients[i % gradients.length][1]
+                              : gradients[i % gradients.length][0]}
+                            stroke={selectedLengthContact === entry.contactId ? '#fff' : 'none'}
+                            strokeWidth={selectedLengthContact === entry.contactId ? 2 : 0}
+                            className="cursor-pointer"
+                            onClick={() => setSelectedLengthContact(
+                              selectedLengthContact === entry.contactId ? null : entry.contactId
+                            )}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Expanded detail panel */}
+                {selectedContact && (
+                  <div className="bg-white/5 rounded-lg p-4 mt-3 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <p className="text-white font-semibold">{selectedContact.name}</p>
+                      <button
+                        onClick={() => setSelectedLengthContact(null)}
+                        className="text-white/40 hover:text-white text-sm bg-white/5 hover:bg-white/10 rounded-lg px-3 py-1 transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    {selectedContact.topMessages?.length > 0 ? (
+                      selectedContact.topMessages.map((msg, i) => (
+                        <div key={i} className="bg-white/5 rounded-lg p-3">
+                          <div className="flex justify-between text-xs text-white/40 mb-1">
+                            <span>{msg.wordCount} words</span>
+                            {msg.date && <span>{msg.date}</span>}
+                          </div>
+                          <p className="text-white/80 text-sm break-words whitespace-pre-wrap">{msg.text}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-white/40 text-sm">No messages available</p>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Length distribution histogram */}
           {messageLength.lengthDistribution?.length > 0 && (
