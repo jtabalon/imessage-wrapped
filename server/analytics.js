@@ -29,6 +29,9 @@ const stopWords = new Set([
   'www', 'com', 'http', 'https', 'org', 'net', 'edu', 'gov', 'html', 'htm'
 ]);
 
+// Detect iMessage tapback reactions (e.g. 'Loved "Hey!"', 'Laughed at an image')
+const reactionPrefixRegex = /^(Loved|Liked|Disliked|Laughed at|Emphasized|Questioned) ("|\u{201c}|an )/u;
+
 // Emoji regex (shared by emoji stats + group chat analytics)
 const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu;
 
@@ -406,6 +409,7 @@ export function getWordFrequency() {
 
   messages.forEach(msg => {
     if (!msg.text || !msg.is_from_me) return; // Only count words YOU sent
+    if (reactionPrefixRegex.test(msg.text)) return; // Skip tapback reactions
 
     // Clean and tokenize
     const words = msg.text
@@ -465,6 +469,7 @@ export function getSentimentAnalysis() {
 
   messages.forEach(msg => {
     if (!msg.text) return;
+    if (reactionPrefixRegex.test(msg.text)) return; // Skip tapback reactions
 
     const words = msg.text.toLowerCase().split(/\s+/);
     let positive = 0;
@@ -955,8 +960,8 @@ export function getGroupChatStats() {
       stat.monthlyCounts[monthKey] = (stat.monthlyCounts[monthKey] || 0) + 1;
     }
 
-    // Emoji extraction
-    if (msg.text) {
+    // Emoji and word extraction (skip tapback reactions)
+    if (msg.text && !reactionPrefixRegex.test(msg.text)) {
       const emojis = msg.text.match(emojiRegex) || [];
       emojis.forEach(e => { stat.emojis[e] = (stat.emojis[e] || 0) + 1; });
 
